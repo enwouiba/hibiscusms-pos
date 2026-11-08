@@ -178,6 +178,7 @@ class AppDatabase {
       CREATE TABLE products (
         id TEXT PRIMARY KEY,
         tenant_id TEXT,
+        store_id TEXT,
         category_id TEXT,
         unit_id TEXT NOT NULL,
         name TEXT NOT NULL,
@@ -202,6 +203,7 @@ class AppDatabase {
     batch.execute('CREATE INDEX idx_products_sku ON products(sku)');
     batch.execute('CREATE INDEX idx_products_category ON products(category_id)');
     batch.execute('CREATE INDEX idx_products_active ON products(is_active)');
+    batch.execute('CREATE INDEX idx_products_store ON products(store_id)');
 
     batch.execute('''
       CREATE TABLE product_stocks (
@@ -560,6 +562,15 @@ class AppDatabase {
         ''');
         await db.execute('CREATE INDEX IF NOT EXISTS idx_ma_store ON manual_adjustments(store_id)');
         await db.execute('CREATE INDEX IF NOT EXISTS idx_ma_target ON manual_adjustments(target)');
+      } catch (_) {}
+    }
+
+    if (oldVersion < 7) {
+      // v7: pwodwi pa magazen — chak magazen gen pwòp pwodwi li.
+      // store_id NULL = pwodwi pataje (ansyen konpòtman, bak-end jere l).
+      try {
+        await db.execute('ALTER TABLE products ADD COLUMN store_id TEXT');
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_products_store ON products(store_id)');
       } catch (_) {}
     }
   }

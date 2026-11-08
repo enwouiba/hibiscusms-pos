@@ -30,6 +30,9 @@ class ProductRepository {
     final tenantId = await _activeTenantId();
     final clauses = <String>['p.is_active = 1'];
     final args = <Object?>[];
+    // Pwodwi magazen aktyèl la (oswa pwodwi pataje ak store_id NULL).
+    clauses.add('(p.store_id = ? OR p.store_id IS NULL)');
+    args.add(storeId);
     if (tenantId != null) {
       clauses.add('(p.tenant_id = ? OR p.tenant_id IS NULL)');
       args.add(tenantId);
@@ -68,9 +71,10 @@ class ProductRepository {
         FROM products p
         LEFT JOIN product_stocks ps
                ON ps.product_id = p.id AND ps.store_id = ?
-       WHERE p.barcode = ? AND p.is_active = 1 $tenantClause
+       WHERE p.barcode = ? AND p.is_active = 1
+         AND (p.store_id = ? OR p.store_id IS NULL) $tenantClause
        LIMIT 1
-    ''', [storeId, barcode, ?tenantId]);
+    ''', [storeId, barcode, storeId, ?tenantId]);
     if (rows.isEmpty) return null;
     return Product.fromMap(rows.first);
   }
@@ -85,9 +89,9 @@ class ProductRepository {
         FROM products p
         LEFT JOIN product_stocks ps
                ON ps.product_id = p.id AND ps.store_id = ?
-       WHERE p.id = ? $tenantClause
+       WHERE p.id = ? AND (p.store_id = ? OR p.store_id IS NULL) $tenantClause
        LIMIT 1
-    ''', [storeId, id, ?tenantId]);
+    ''', [storeId, id, storeId, ?tenantId]);
     if (rows.isEmpty) return null;
     return Product.fromMap(rows.first);
   }
@@ -100,9 +104,10 @@ class ProductRepository {
         FROM products p
         JOIN product_stocks ps ON ps.product_id = p.id AND ps.store_id = ?
        WHERE p.is_active = 1 AND p.track_stock = 1
+         AND (p.store_id = ? OR p.store_id IS NULL)
          AND ps.stock <= ps.low_stock_alert $tenantClause
        ORDER BY (ps.stock - ps.low_stock_alert) ASC
-    ''', [storeId, ?tenantId]);
+    ''', [storeId, storeId, ?tenantId]);
     return rows.map(Product.fromMap).toList();
   }
 
@@ -154,6 +159,9 @@ class ProductRepository {
     if (tenantId != null) {
       productMap['tenant_id'] = tenantId;
     }
+    // Mare pwodwi a ak magazen kote l kreye a — konsa li pa parèt nan lòt
+    // magazen yo (chak magazen gen pwòp pwodwi li).
+    productMap['store_id'] = storeId;
 
     await _db.transaction((txn) async {
       await txn.insert('products', productMap);
