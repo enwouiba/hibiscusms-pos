@@ -33,7 +33,7 @@ jobs:
           flutter build windows --release
           --dart-define=API_BASE_URL=https://pos.stann.store
           --dart-define=APP_NAME=HibiscusMS
-          --dart-define=APP_TAGLINE=Pwen Vant
+          "--dart-define=APP_TAGLINE=Pwen Vant"
 
       - name: Zip Release folder
         run: Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath HibiscusMS-Windows.zip
