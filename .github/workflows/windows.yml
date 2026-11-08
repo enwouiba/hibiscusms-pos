@@ -29,6 +29,9 @@ jobs:
         run: flutter create --platforms=windows .
 
       - name: Build Windows (release)
+        env:
+          # Siprime erè STL1011 (experimental/coroutine depreye nan nouvo MSVC la)
+          CL: /D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS
         run: >
           flutter build windows --release
           --dart-define=API_BASE_URL=https://pos.stann.store
