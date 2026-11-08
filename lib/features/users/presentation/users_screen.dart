@@ -3,11 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/auth/auth_state.dart';
+import '../../../core/auth/token_store.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../data/user_repository.dart';
 
 final _usersListProvider = FutureProvider.autoDispose<List<ManagedUser>>((ref) async {
-  return ref.watch(userRepositoryProvider).list();
+  // Scope sou magazen aktif la — yon kesye yon magazen pa parèt nan lòt la.
+  final storeId = await ref.watch(tokenStoreProvider).activeStoreId();
+  return ref.watch(userRepositoryProvider).list(storeId: storeId);
 });
 
 class UsersScreen extends ConsumerWidget {

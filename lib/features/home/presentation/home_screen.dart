@@ -11,7 +11,16 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/sync/sync_service.dart';
 import '../../../core/utils/money_formatter.dart';
+import '../../../shared/models/store.dart';
 import '../../adjustments/data/adjustment_repository.dart';
+import '../../business/data/store_repository.dart';
+
+/// Magazen aktif la — pou konnen tip li (retail vs dry cleaning).
+final _activeStoreProvider = FutureProvider.autoDispose<Store?>((ref) async {
+  final storeId = await ref.watch(tokenStoreProvider).activeStoreId();
+  if (storeId == null) return null;
+  return ref.watch(storeRepositoryProvider).findById(storeId);
+});
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -20,6 +29,7 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authControllerProvider).valueOrNull;
     final sync = ref.watch(syncProgressProvider);
+    final isDry = ref.watch(_activeStoreProvider).valueOrNull?.isDryCleaning ?? false;
 
     if (auth == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -78,7 +88,7 @@ class HomeScreen extends ConsumerWidget {
               const _EarningsCard(),
             ],
             const SizedBox(height: 16),
-            _MenuGrid(canManage: auth.highestLevel(null) >= 2),
+            _MenuGrid(canManage: auth.highestLevel(null) >= 2, isDryCleaning: isDry),
           ],
         ),
       ),
@@ -536,26 +546,40 @@ class _SyncBanner extends ConsumerWidget {
 }
 
 class _MenuGrid extends StatelessWidget {
-  const _MenuGrid({required this.canManage});
+  const _MenuGrid({required this.canManage, this.isDryCleaning = false});
   final bool canManage;
+  final bool isDryCleaning;
 
   @override
   Widget build(BuildContext context) {
-    final items = <_MenuItem>[
-      _MenuItem('Nouvo Vant', Icons.point_of_sale, '/pos', primary: true),
-      _MenuItem('Istwa Vant', Icons.receipt_long, '/sales'),
-      _MenuItem('Pwodwi', Icons.inventory_2, '/products'),
-      _MenuItem('Kliyan', Icons.people, '/customers'),
-      _MenuItem('Kès', Icons.account_balance_wallet, '/cash-sessions'),
-      if (canManage) _MenuItem('Founisè', Icons.local_shipping, '/suppliers'),
-      if (canManage) _MenuItem('Acha', Icons.shopping_cart, '/purchases'),
-      _MenuItem('Mouvman Stock', Icons.swap_vert, '/stock-movements'),
-      if (canManage) _MenuItem('Rapò', Icons.bar_chart, '/reports'),
-      if (canManage) _MenuItem('Itilizatè', Icons.people_alt, '/users'),
-      if (canManage) _MenuItem('Plan', Icons.workspace_premium, '/plans'),
-      if (canManage) _MenuItem('APK Pa Mwen', Icons.android, '/my-apk'),
-      _MenuItem('Paramèt', Icons.settings, '/settings'),
-    ];
+    final items = isDryCleaning
+        ? <_MenuItem>[
+            _MenuItem('Nouvo Lòd', Icons.add_box, '/dryclean/new', primary: true),
+            _MenuItem('Lòd yo', Icons.local_laundry_service, '/dryclean'),
+            _MenuItem('Sèvis', Icons.checkroom, '/products'),
+            _MenuItem('Kliyan', Icons.people, '/customers'),
+            _MenuItem('Kès', Icons.account_balance_wallet, '/cash-sessions'),
+            if (canManage) _MenuItem('Rapò', Icons.bar_chart, '/reports'),
+            if (canManage) _MenuItem('Itilizatè', Icons.people_alt, '/users'),
+            if (canManage) _MenuItem('Plan', Icons.workspace_premium, '/plans'),
+            if (canManage) _MenuItem('APK Pa Mwen', Icons.android, '/my-apk'),
+            _MenuItem('Paramèt', Icons.settings, '/settings'),
+          ]
+        : <_MenuItem>[
+            _MenuItem('Nouvo Vant', Icons.point_of_sale, '/pos', primary: true),
+            _MenuItem('Istwa Vant', Icons.receipt_long, '/sales'),
+            _MenuItem('Pwodwi', Icons.inventory_2, '/products'),
+            _MenuItem('Kliyan', Icons.people, '/customers'),
+            _MenuItem('Kès', Icons.account_balance_wallet, '/cash-sessions'),
+            if (canManage) _MenuItem('Founisè', Icons.local_shipping, '/suppliers'),
+            if (canManage) _MenuItem('Acha', Icons.shopping_cart, '/purchases'),
+            _MenuItem('Mouvman Stock', Icons.swap_vert, '/stock-movements'),
+            if (canManage) _MenuItem('Rapò', Icons.bar_chart, '/reports'),
+            if (canManage) _MenuItem('Itilizatè', Icons.people_alt, '/users'),
+            if (canManage) _MenuItem('Plan', Icons.workspace_premium, '/plans'),
+            if (canManage) _MenuItem('APK Pa Mwen', Icons.android, '/my-apk'),
+            _MenuItem('Paramèt', Icons.settings, '/settings'),
+          ];
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -758,14 +782,15 @@ final _homeStatsProvider = FutureProvider.autoDispose<HomeStats>((ref) async {
   final rawRevenue = (salesRow.first['revenue'] as num?)?.toDouble() ?? 0;
   final totalToday = rawRevenue + debtPaidToday;
 
-  // Stock ba
+  // Stock ba — SÈLMAN pwodwi magazen aktif la (oswa pataje ak store_id NULL).
   final lowStockRow = await db.rawQuery('''
     SELECT COUNT(*) AS cnt
     FROM products p
     JOIN product_stocks ps ON ps.product_id = p.id AND ps.store_id = ?
     WHERE p.is_active = 1 AND p.track_stock = 1
+      AND (p.store_id = ? OR p.store_id IS NULL)
       AND ps.stock <= ps.low_stock_alert
-  ''', [storeId]);
+  ''', [storeId, storeId]);
 
   // Sync ki tann
   final pendingRow = await db.rawQuery('SELECT COUNT(*) AS cnt FROM sync_outbox');

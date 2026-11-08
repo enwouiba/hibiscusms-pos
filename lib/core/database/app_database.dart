@@ -480,8 +480,58 @@ class AppDatabase {
     batch.execute('CREATE INDEX idx_ma_store ON manual_adjustments(store_id)');
     batch.execute('CREATE INDEX idx_ma_target ON manual_adjustments(target)');
 
+    // Dry cleaning — lòd ak rad yo (v8)
+    batch.execute(_sqlDrycleanOrders);
+    batch.execute('CREATE INDEX idx_dco_store_status ON dryclean_orders(store_id, status)');
+    batch.execute(_sqlDrycleanItems);
+    batch.execute('CREATE INDEX idx_dcoi_order ON dryclean_order_items(order_id)');
+
     await batch.commit(noResult: true);
   }
+
+  static const String _sqlDrycleanOrders = '''
+      CREATE TABLE dryclean_orders (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT,
+        store_id TEXT,
+        user_id TEXT,
+        cashier_name TEXT,
+        customer_id TEXT,
+        customer_name TEXT,
+        customer_phone TEXT,
+        order_number INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'received',
+        ready_date TEXT,
+        subtotal REAL NOT NULL DEFAULT 0,
+        discount REAL NOT NULL DEFAULT 0,
+        total REAL NOT NULL DEFAULT 0,
+        amount_paid REAL NOT NULL DEFAULT 0,
+        notes TEXT,
+        version TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        completed_at TEXT,
+        deleted_at TEXT
+      )
+  ''';
+
+  static const String _sqlDrycleanItems = '''
+      CREATE TABLE dryclean_order_items (
+        id TEXT PRIMARY KEY,
+        order_id TEXT NOT NULL,
+        store_id TEXT,
+        product_id TEXT,
+        name_snapshot TEXT NOT NULL,
+        quantity REAL NOT NULL DEFAULT 1,
+        unit_price REAL NOT NULL DEFAULT 0,
+        line_total REAL NOT NULL DEFAULT 0,
+        tag_number TEXT,
+        condition_notes TEXT,
+        version TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+  ''';
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
@@ -571,6 +621,16 @@ class AppDatabase {
       try {
         await db.execute('ALTER TABLE products ADD COLUMN store_id TEXT');
         await db.execute('CREATE INDEX IF NOT EXISTS idx_products_store ON products(store_id)');
+      } catch (_) {}
+    }
+
+    if (oldVersion < 8) {
+      // v8: dry cleaning — tab lòd + rad yo
+      try {
+        await db.execute(_sqlDrycleanOrders.replaceFirst('CREATE TABLE', 'CREATE TABLE IF NOT EXISTS'));
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_dco_store_status ON dryclean_orders(store_id, status)');
+        await db.execute(_sqlDrycleanItems.replaceFirst('CREATE TABLE', 'CREATE TABLE IF NOT EXISTS'));
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_dcoi_order ON dryclean_order_items(order_id)');
       } catch (_) {}
     }
   }

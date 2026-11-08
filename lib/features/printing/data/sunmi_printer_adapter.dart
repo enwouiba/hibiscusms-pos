@@ -79,14 +79,28 @@ class SunmiPrinterAdapter {
         await SunmiPrinter.printText(data.businessEmail!);
       }
 
+      if (data.ticketTitle != null) {
+        await SunmiPrinter.setAlignment(SunmiPrintAlign.CENTER);
+        await SunmiPrinter.setFontSize(SunmiFontSize.LG);
+        await SunmiPrinter.bold();
+        await SunmiPrinter.printText(data.ticketTitle!);
+        await SunmiPrinter.resetBold();
+        await SunmiPrinter.resetFontSize();
+      }
+
       await SunmiPrinter.line();
       await SunmiPrinter.setAlignment(SunmiPrintAlign.LEFT);
 
-      // Resi # + dat
+      // Nimewo + dat
       await SunmiPrinter.printRow(cols: [
-        ColumnMaker(text: 'Resi #${data.saleNumber}', width: 6, align: SunmiPrintAlign.LEFT),
+        ColumnMaker(text: '${data.numberLabel} #${data.saleNumber}', width: 6, align: SunmiPrintAlign.LEFT),
         ColumnMaker(text: _shortDate(data.createdAt.toLocal()), width: 6, align: SunmiPrintAlign.RIGHT),
       ]);
+      if (data.readyDate != null) {
+        await SunmiPrinter.bold();
+        await SunmiPrinter.printText('Pare: ${_shortDate(data.readyDate!.toLocal())}');
+        await SunmiPrinter.resetBold();
+      }
 
       if (data.customerName != null) {
         await SunmiPrinter.bold();

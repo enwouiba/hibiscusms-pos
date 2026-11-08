@@ -82,10 +82,11 @@ class UserRepository {
   UserRepository(this._api);
   final ApiClient _api;
 
-  Future<List<ManagedUser>> list({String? roleFilter}) async {
+  Future<List<ManagedUser>> list({String? roleFilter, String? storeId}) async {
     try {
       final res = await _api.dio.get('/api/users', queryParameters: {
         'per_page': 100,
+        if (storeId != null) 'store_id': storeId,
       });
       final data = (res.data['data'] as List).cast<Map<String, dynamic>>();
       var users = data.map(ManagedUser.fromJson).toList();

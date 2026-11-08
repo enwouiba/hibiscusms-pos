@@ -33,6 +33,7 @@ class _BusinessSettingsScreenState extends ConsumerState<BusinessSettingsScreen>
   final _emailCtrl = TextEditingController();
   final _nifCtrl = TextEditingController();
   final _footerCtrl = TextEditingController();
+  String _storeType = 'retail'; // 'retail' | 'drycleaning'
   Store? _store;
   bool _saving = false;
   bool _uploadingLogo = false;
@@ -48,6 +49,7 @@ class _BusinessSettingsScreenState extends ConsumerState<BusinessSettingsScreen>
     _emailCtrl.text = s.email ?? '';
     _nifCtrl.text = s.nif ?? '';
     _footerCtrl.text = s.footerText ?? 'Mèsi paske w achte lakay nou!';
+    _storeType = s.type;
   }
 
   @override
@@ -136,6 +138,7 @@ class _BusinessSettingsScreenState extends ConsumerState<BusinessSettingsScreen>
     try {
       final newSettings = Map<String, dynamic>.from(_store!.settings);
       newSettings['footer_text'] = _footerCtrl.text.trim();
+      newSettings['type'] = _storeType;
       if (_emailCtrl.text.trim().isNotEmpty) {
         newSettings['email'] = _emailCtrl.text.trim();
       } else {
@@ -272,6 +275,21 @@ class _BusinessSettingsScreenState extends ConsumerState<BusinessSettingsScreen>
                   ),
                   validator: (v) => (v == null || v.trim().isEmpty) ? 'Obligatwa' : null,
                   onChanged: (_) => setState(() {}),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: _storeType,
+                  decoration: const InputDecoration(
+                    labelText: 'Tip biznis *',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.category),
+                    helperText: 'Chanje jan app la fonksyone pou magazen sa a',
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'retail', child: Text('🛒 Magazen (vann pwodwi)')),
+                    DropdownMenuItem(value: 'drycleaning', child: Text('👔 Dry Cleaning (netwayaj rad)')),
+                  ],
+                  onChanged: (v) => setState(() => _storeType = v ?? 'retail'),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(

@@ -33,6 +33,10 @@ class Store {
   String? get footerText => settings['footer_text'] as String?;
   String? get email => settings['email'] as String?;
   String? get nif => settings['nif'] as String?;
+
+  /// Tip biznis magazen an: 'retail' (vant pwodwi) oswa 'drycleaning' (netwayaj).
+  String get type => (settings['type'] as String?) ?? 'retail';
+  bool get isDryCleaning => type == 'drycleaning';
   String? get website => settings['website'] as String?;
 
   factory Store.fromMap(Map<String, dynamic> m) {

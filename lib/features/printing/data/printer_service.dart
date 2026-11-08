@@ -36,6 +36,9 @@ class ReceiptData {
     this.changeDue,
     this.amountDue = 0,
     this.receiptWidth = 384,
+    this.ticketTitle,
+    this.numberLabel = 'Resi',
+    this.readyDate,
   });
 
   final int saleNumber;
@@ -60,6 +63,9 @@ class ReceiptData {
   final double amountDue;
   final double? changeDue;
   final int receiptWidth;
+  final String? ticketTitle; // egz. "TIKÈ REKLAMASYON" pou dry cleaning
+  final String numberLabel; // "Resi" oswa "Lòd"
+  final DateTime? readyDate; // dat pare pou dry cleaning
 }
 
 class ReceiptItem {
@@ -236,15 +242,28 @@ class PrinterService {
       ));
     }
 
+    if (data.ticketTitle != null) {
+      bytes.addAll(gen.text(
+        _sanitize(data.ticketTitle!),
+        styles: const PosStyles(align: PosAlign.center, bold: true, height: PosTextSize.size2),
+      ));
+    }
+
     bytes.addAll(gen.hr());
     bytes.addAll(gen.row([
-      PosColumn(text: 'Resi #${data.saleNumber}', width: 6),
+      PosColumn(text: '${data.numberLabel} #${data.saleNumber}', width: 6),
       PosColumn(
         text: _shortDate(data.createdAt.toLocal()),
         width: 6,
         styles: const PosStyles(align: PosAlign.right),
       ),
     ]));
+    if (data.readyDate != null) {
+      bytes.addAll(gen.text(
+        _sanitize('Pare: ${_shortDate(data.readyDate!.toLocal())}'),
+        styles: const PosStyles(bold: true),
+      ));
+    }
     if (data.customerName != null && data.customerName!.trim().isNotEmpty) {
       bytes.addAll(gen.text(
         _sanitize('Kliyan: ${data.customerName}'),
