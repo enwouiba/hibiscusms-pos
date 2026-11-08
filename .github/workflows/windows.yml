@@ -1,0 +1,46 @@
+name: Build Windows EXE
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter 3.41.9
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.41.9
+          channel: stable
+          cache: true
+
+      - name: Enable Windows desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Pub get
+        run: flutter pub get
+
+      - name: Add Windows platform (si l pa la)
+        run: flutter create --platforms=windows .
+
+      - name: Build Windows (release)
+        run: >
+          flutter build windows --release
+          --dart-define=API_BASE_URL=https://pos.stann.store
+          --dart-define=APP_NAME=HibiscusMS
+          --dart-define=APP_TAGLINE=Pwen Vant
+
+      - name: Zip Release folder
+        run: Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath HibiscusMS-Windows.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HibiscusMS-Windows
+          path: HibiscusMS-Windows.zip
+          retention-days: 14
