@@ -32,6 +32,9 @@ jobs:
         run: |
           (Get-Content windows\runner\main.cpp) -replace 'L"hibiscusms"','L"HibiscusMS"' | Set-Content windows\runner\main.cpp
 
+      - name: Set Windows app icon (HibiscusMS)
+        run: Copy-Item windows_assets\app_icon.ico windows\runner\resources\app_icon.ico -Force
+
       - name: Build Windows (release)
         env:
           # Siprime erè STL1011 (experimental/coroutine depreye nan nouvo MSVC la)
