@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -78,6 +79,9 @@ class SyncService {
       where: 'key = ?',
       whereArgs: ['pull_cursor:$storeId'],
     );
+    // Efase magazen lokal yo pou yo re-pull FRE (settings/type/nif/email
+    // korije) — san sa, chèk vèsyon an ta sote wou ki pa chanje yo.
+    try { await db.delete('stores'); } catch (_) {}
     // Reset outbox tou
     await outbox.resetAttempts();
     // Kounye a fè sync total
@@ -249,7 +253,10 @@ class SyncService {
     json.forEach((k, v) {
       if (!cols.contains(k)) return; // jete kolòn ki pa egziste
       if (v is bool) { out[k] = v ? 1 : 0; return; }
-      if (v is List || v is Map) { out[k] = v.toString(); return; }
+      // JSON valab (jsonEncode) — PA v.toString() ki bay yon fòma envalab
+      // ke jsonDecode pa ka li (konsa settings tankou `type`/`nif`/`email`
+      // pa pèdi apre sync).
+      if (v is List || v is Map) { out[k] = jsonEncode(v); return; }
       // Konvèti String pri (ex: "200.00") an double si posib
       if (v is String && (k == 'price' || k == 'cost' || k == 'tax_rate' ||
           k == 'subtotal' || k == 'total' || k == 'discount' ||
