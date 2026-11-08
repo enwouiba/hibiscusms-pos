@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 class MoneyFormatter {
   MoneyFormatter._();
 
-  static String format(num amount, {String currency = 'HTG'}) {
+  static String format(num amount, {String currency = 'USD'}) {
     final f = NumberFormat.currency(
       locale: 'fr_HT',
       symbol: _symbolFor(currency),

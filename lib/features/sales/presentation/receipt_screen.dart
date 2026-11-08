@@ -76,6 +76,11 @@ class ReceiptScreen extends ConsumerWidget {
         .then((b) => b.buffer.asUint8List())
         .catchError((_) => Uint8List(0));
 
+    // Antèt resi a soti nan MAGAZEN AKTIF la (chak magazen pwòp non/adrès/
+    // NIF/imel li), ak konstant yo kòm fallback si yon chan vid.
+    String pick(String? v, String fallback) =>
+        (v != null && v.trim().isNotEmpty) ? v.trim() : fallback;
+
     final data = ReceiptData(
       saleNumber: sale.saleNumber,
       createdAt: sale.createdAt,
@@ -92,11 +97,11 @@ class ReceiptScreen extends ConsumerWidget {
       amountReceived: sale.amountReceived,
       changeDue: sale.changeDue,
       amountDue: sale.amountDue,
-      businessName: AppConstants.receiptBusinessName,
-      businessAddress: AppConstants.receiptBusinessAddress,
-      businessPhone: AppConstants.receiptBusinessPhone,
-      businessNif: AppConstants.receiptBusinessNif,
-      businessEmail: AppConstants.receiptBusinessEmail,
+      businessName: pick(localStore?.name, AppConstants.receiptBusinessName),
+      businessAddress: pick(localStore?.address, AppConstants.receiptBusinessAddress),
+      businessPhone: pick(localStore?.phone, AppConstants.receiptBusinessPhone),
+      businessNif: pick(localStore?.nif, AppConstants.receiptBusinessNif),
+      businessEmail: pick(localStore?.email, AppConstants.receiptBusinessEmail),
       logoBytes: logoBytes.isNotEmpty ? logoBytes : null,
       footerText: localStore?.footerText ?? 'Mèsi paske w achte lakay nou!',
       customerName: sale.customerName,
@@ -170,9 +175,9 @@ class ReceiptScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 8),
 
-                      // Non Biznis
+                      // Non Biznis (magazen aktif la)
                       Text(
-                        AppConstants.receiptBusinessName,
+                        (store?.name.trim().isNotEmpty ?? false) ? store!.name : AppConstants.receiptBusinessName,
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -182,28 +187,28 @@ class ReceiptScreen extends ConsumerWidget {
 
                       // Adrès
                       Text(
-                        AppConstants.receiptBusinessAddress,
+                        (store?.address?.trim().isNotEmpty ?? false) ? store!.address! : AppConstants.receiptBusinessAddress,
                         style: const TextStyle(fontSize: 12),
                         textAlign: TextAlign.center,
                       ),
 
                       // NIF
                       Text(
-                        'NIF: ${AppConstants.receiptBusinessNif}',
+                        'NIF: ${(store?.nif?.trim().isNotEmpty ?? false) ? store!.nif! : AppConstants.receiptBusinessNif}',
                         style: const TextStyle(fontSize: 12),
                         textAlign: TextAlign.center,
                       ),
 
                       // Telefòn
                       Text(
-                        'Tel: ${AppConstants.receiptBusinessPhone}',
+                        'Tel: ${(store?.phone?.trim().isNotEmpty ?? false) ? store!.phone! : AppConstants.receiptBusinessPhone}',
                         style: const TextStyle(fontSize: 12),
                         textAlign: TextAlign.center,
                       ),
 
                       // Email
                       Text(
-                        AppConstants.receiptBusinessEmail,
+                        (store?.email?.trim().isNotEmpty ?? false) ? store!.email! : AppConstants.receiptBusinessEmail,
                         style: const TextStyle(fontSize: 12),
                         textAlign: TextAlign.center,
                       ),

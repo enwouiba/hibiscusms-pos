@@ -200,7 +200,7 @@ class SunmiPrinterAdapter {
       if (i > 0 && (intPart.length - i) % 3 == 0) buf.write(',');
       buf.write(intPart[i]);
     }
-    return '${buf.toString()}.${parts[1]}';
+    return '\$${buf.toString()}.${parts[1]}';
   }
 
   static String _shortDate(DateTime d) {

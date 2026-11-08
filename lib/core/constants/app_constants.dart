@@ -8,7 +8,7 @@ class AppConstants {
   static const String dbName = 'walcash_pos.db';
   static const int dbVersion = 7;
 
-  static const String defaultCurrency = 'HTG';
+  static const String defaultCurrency = 'USD';
   static const String defaultLocale = 'ht';
 
   static String get backupFolderName => '$appName Backups';

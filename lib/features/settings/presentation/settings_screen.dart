@@ -11,6 +11,8 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authControllerProvider).valueOrNull;
+    // Kesye (cashier) pa gen akse paramèt biznis la — admin sèlman.
+    final canManage = auth != null && auth.highestLevel(null) >= 2;
     return Scaffold(
       appBar: AppBar(title: const Text('Paramèt')),
       body: ListView(
@@ -30,13 +32,14 @@ class SettingsScreen extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/settings/profile'),
           ),
-          ListTile(
-            leading: const Icon(Icons.business, color: Colors.indigo),
-            title: const Text('Paramèt Biznis'),
-            subtitle: const Text('Non, adrès, telefòn, mo remèsiman'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push('/settings/business'),
-          ),
+          if (canManage)
+            ListTile(
+              leading: const Icon(Icons.business, color: Colors.indigo),
+              title: const Text('Paramèt Biznis'),
+              subtitle: const Text('Non, adrès, telefòn, NIF, imel'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/settings/business'),
+            ),
           ListTile(
             leading: const Icon(Icons.print),
             title: const Text('Konfigirе Printer'),

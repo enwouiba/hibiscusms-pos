@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/auth/auth_state.dart';
 import '../../../core/auth/token_store.dart';
 import '../../../core/network/api_client.dart';
 import '../../../shared/models/store.dart';
@@ -30,6 +31,7 @@ class _BusinessSettingsScreenState extends ConsumerState<BusinessSettingsScreen>
   final _addressCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
+  final _nifCtrl = TextEditingController();
   final _footerCtrl = TextEditingController();
   Store? _store;
   bool _saving = false;
@@ -44,12 +46,13 @@ class _BusinessSettingsScreenState extends ConsumerState<BusinessSettingsScreen>
     _addressCtrl.text = s.address ?? '';
     _phoneCtrl.text = s.phone ?? '';
     _emailCtrl.text = s.email ?? '';
+    _nifCtrl.text = s.nif ?? '';
     _footerCtrl.text = s.footerText ?? 'Mèsi paske w achte lakay nou!';
   }
 
   @override
   void dispose() {
-    for (final c in [_nameCtrl, _addressCtrl, _phoneCtrl, _emailCtrl, _footerCtrl]) {
+    for (final c in [_nameCtrl, _addressCtrl, _phoneCtrl, _emailCtrl, _nifCtrl, _footerCtrl]) {
       c.dispose();
     }
     super.dispose();
@@ -138,6 +141,11 @@ class _BusinessSettingsScreenState extends ConsumerState<BusinessSettingsScreen>
       } else {
         newSettings.remove('email');
       }
+      if (_nifCtrl.text.trim().isNotEmpty) {
+        newSettings['nif'] = _nifCtrl.text.trim();
+      } else {
+        newSettings.remove('nif');
+      }
       final updated = _store!.copyWith(
         name: _nameCtrl.text.trim(),
         address: _addressCtrl.text.trim().isEmpty ? null : _addressCtrl.text.trim(),
@@ -185,6 +193,23 @@ class _BusinessSettingsScreenState extends ConsumerState<BusinessSettingsScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Kesye (cashier) pa gen dwa sou paramèt biznis — admin sèlman.
+    final auth = ref.watch(authControllerProvider).valueOrNull;
+    if (auth != null && auth.highestLevel(null) < 2) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Paramèt Biznis')),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Ou pa gen dwa sou paramèt biznis la.\nKontakte yon administratè.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
+
     final storeAsync = ref.watch(_activeStoreProvider);
     final tenantAsync = ref.watch(currentTenantProvider);
     storeAsync.whenData((v) {
@@ -282,6 +307,15 @@ class _BusinessSettingsScreenState extends ConsumerState<BusinessSettingsScreen>
                   ),
                   keyboardType: TextInputType.emailAddress,
                   onChanged: (_) => setState(() {}),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _nifCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'NIF (parèt sou resi a)',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.badge),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 TextFormField(

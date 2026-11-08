@@ -32,6 +32,7 @@ class Store {
   // Shortcuts pou settings JSON
   String? get footerText => settings['footer_text'] as String?;
   String? get email => settings['email'] as String?;
+  String? get nif => settings['nif'] as String?;
   String? get website => settings['website'] as String?;
 
   factory Store.fromMap(Map<String, dynamic> m) {
