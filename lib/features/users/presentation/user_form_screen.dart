@@ -27,6 +27,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
   final _phoneCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   String _role = 'cashier';
+  String? _storeId; // magazen kesye/admin lan mare avè l (obligatwa si pa super_admin)
   bool _isActive = true;
   bool _saving = false;
   bool _showPassword = false;
@@ -56,7 +57,18 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
     try {
       final repo = ref.read(userRepositoryProvider);
       if (_existing == null) {
-        final storeId = await ref.read(tokenStoreProvider).activeStoreId();
+        // Pou kesye/admin, magazen an OBLIGATWA — konsa yon kesye mare ak
+        // yon sèl magazen, li pa jwenn tout magazen yo. Sèlman super_admin
+        // (store_id null) wè tout.
+        final auth = ref.read(authControllerProvider).valueOrNull;
+        final storeId = _storeId ?? auth?.stores.firstOrNull?.id;
+        if (_role != 'super_admin' && (storeId == null || storeId.isEmpty)) {
+          setState(() => _saving = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Chwazi yon magazen pou itilizatè sa a.')),
+          );
+          return;
+        }
         await repo.create(
           name: _nameCtrl.text.trim(),
           email: _emailCtrl.text.trim(),
@@ -208,6 +220,23 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                 ],
                 onChanged: isNew ? (v) => setState(() => _role = v ?? 'cashier') : null,
               ),
+            if (isNew && _role != 'super_admin' && (currentAuth?.stores.isNotEmpty ?? false)) ...[
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                initialValue: _storeId ?? currentAuth!.stores.first.id,
+                decoration: const InputDecoration(
+                  labelText: 'Magazen *',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.store),
+                  helperText: 'Itilizatè a ap travay nan magazen sa a SÈLMAN',
+                ),
+                items: [
+                  for (final s in currentAuth!.stores)
+                    DropdownMenuItem(value: s.id, child: Text(s.name)),
+                ],
+                onChanged: (v) => setState(() => _storeId = v),
+              ),
+            ],
             const SizedBox(height: 16),
             TextFormField(
               controller: _passwordCtrl,
