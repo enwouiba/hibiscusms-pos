@@ -28,6 +28,10 @@ jobs:
       - name: Add Windows platform (si l pa la)
         run: flutter create --platforms=windows .
 
+      - name: Set Windows app title (HibiscusMS)
+        run: |
+          (Get-Content windows\runner\main.cpp) -replace 'L"hibiscusms"','L"HibiscusMS"' | Set-Content windows\runner\main.cpp
+
       - name: Build Windows (release)
         env:
           # Siprime erè STL1011 (experimental/coroutine depreye nan nouvo MSVC la)
