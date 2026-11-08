@@ -145,6 +145,34 @@ class DrycleanRepository {
     return rows.map((m) => DrycleanOrder.fromMap(m)).toList();
   }
 
+  /// Estatistik dry cleaning pou yon magazen (pou ekran Rapò a).
+  Future<Map<String, num>> stats(String storeId) async {
+    final today = DateTime.now();
+    final startOfDay = DateTime(today.year, today.month, today.day).toUtc().toIso8601String();
+
+    final r = await _db.rawQuery('''
+      SELECT
+        COUNT(*) AS total_orders,
+        COALESCE(SUM(CASE WHEN status IN ('received','in_progress') THEN 1 ELSE 0 END), 0) AS pending,
+        COALESCE(SUM(CASE WHEN status = 'ready' THEN 1 ELSE 0 END), 0) AS ready,
+        COALESCE(SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END), 0) AS today_count,
+        COALESCE(SUM(CASE WHEN created_at >= ? THEN amount_paid ELSE 0 END), 0) AS today_revenue,
+        COALESCE(SUM(CASE WHEN status != 'completed' THEN (total - amount_paid) ELSE 0 END), 0) AS uncollected
+      FROM dryclean_orders
+      WHERE store_id = ? AND (deleted_at IS NULL)
+    ''', [startOfDay, startOfDay, storeId]);
+
+    final row = r.first;
+    return {
+      'total_orders': (row['total_orders'] as num?) ?? 0,
+      'pending': (row['pending'] as num?) ?? 0,
+      'ready': (row['ready'] as num?) ?? 0,
+      'today_count': (row['today_count'] as num?) ?? 0,
+      'today_revenue': (row['today_revenue'] as num?) ?? 0,
+      'uncollected': (row['uncollected'] as num?) ?? 0,
+    };
+  }
+
   Future<DrycleanOrder?> findById(String id) async {
     final rows = await _db.query('dryclean_orders', where: 'id = ?', whereArgs: [id], limit: 1);
     if (rows.isEmpty) return null;
@@ -154,7 +182,7 @@ class DrycleanRepository {
   }
 
   /// Chanje estati yon lòd (Resevwa→Ap travay→Pare→Ranmase).
-  Future<void> updateStatus(String orderId, DrycleanStatus status) async {
+  Future<void> updateStatus(String orderId, DrycleanStatus status, {String? rackLocation}) async {
     final now = DateTime.now().toUtc();
     final version = _hlc.next();
     await _db.transaction((txn) async {
@@ -164,6 +192,9 @@ class DrycleanRepository {
       map['status'] = status.code;
       map['version'] = version;
       map['updated_at'] = now.toIso8601String();
+      if (rackLocation != null && rackLocation.isNotEmpty) {
+        map['rack_location'] = rackLocation;
+      }
       if (status == DrycleanStatus.completed) {
         map['completed_at'] = now.toIso8601String();
       }

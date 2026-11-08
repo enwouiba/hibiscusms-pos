@@ -559,7 +559,7 @@ class _MenuGrid extends StatelessWidget {
             _MenuItem('Sèvis', Icons.checkroom, '/products'),
             _MenuItem('Kliyan', Icons.people, '/customers'),
             _MenuItem('Kès', Icons.account_balance_wallet, '/cash-sessions'),
-            if (canManage) _MenuItem('Rapò', Icons.bar_chart, '/reports'),
+            if (canManage) _MenuItem('Rapò', Icons.bar_chart, '/dryclean/reports'),
             if (canManage) _MenuItem('Itilizatè', Icons.people_alt, '/users'),
             if (canManage) _MenuItem('Plan', Icons.workspace_premium, '/plans'),
             if (canManage) _MenuItem('APK Pa Mwen', Icons.android, '/my-apk'),

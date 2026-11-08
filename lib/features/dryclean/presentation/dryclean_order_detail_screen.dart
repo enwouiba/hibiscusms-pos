@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle, FilteringTextInputFormatter, TextInputFormatter;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/auth/token_store.dart';
 import '../../../core/constants/app_constants.dart';
@@ -96,11 +97,88 @@ class DrycleanOrderDetailScreen extends ConsumerWidget {
     ref.invalidate(_orderProvider(o.id));
   }
 
-  Future<void> _advance(WidgetRef ref, DrycleanOrder o) async {
+  Future<String?> _askRack(BuildContext context, String? current) async {
+    final ctrl = TextEditingController(text: current ?? '');
+    final r = await showDialog<String?>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Kote / Rack'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Nimewo rack / kote rad yo', border: OutlineInputBorder()),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Sote')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, ctrl.text.trim()), child: const Text('OK')),
+        ],
+      ),
+    );
+    ctrl.dispose();
+    return r;
+  }
+
+  Future<void> _advance(BuildContext context, WidgetRef ref, DrycleanOrder o) async {
     final next = o.status.next;
     if (next == null) return;
-    await ref.read(drycleanRepositoryProvider).updateStatus(o.id, next);
+    String? rack;
+    if (next == DrycleanStatus.ready) {
+      rack = await _askRack(context, o.rackLocation);
+    }
+    await ref.read(drycleanRepositoryProvider).updateStatus(o.id, next, rackLocation: rack);
     ref.invalidate(_orderProvider(o.id));
+    // Lè lòd la vin PARE, pwopoze avize kliyan an otomatikman.
+    if (next == DrycleanStatus.ready && context.mounted && (o.customerPhone?.trim().isNotEmpty ?? false)) {
+      await _notify(context, DrycleanOrder.fromMap({
+        'id': o.id, 'store_id': o.storeId, 'order_number': o.orderNumber, 'status': 'ready',
+        'customer_name': o.customerName, 'customer_phone': o.customerPhone,
+        'subtotal': o.subtotal, 'total': o.total, 'amount_paid': o.amountPaid,
+        'created_at': o.createdAt.toIso8601String(),
+      }));
+    }
+  }
+
+  String _digits(String p) {
+    var d = p.replaceAll(RegExp(r'[^0-9]'), '');
+    if (d.length == 8) d = '509$d'; // Ayiti
+    return d;
+  }
+
+  Future<void> _notify(BuildContext context, DrycleanOrder o) async {
+    final phone = o.customerPhone?.trim();
+    if (phone == null || phone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pa gen telefòn pou kliyan an.')));
+      return;
+    }
+    final greet = o.customerName != null && o.customerName!.isNotEmpty ? ' ${o.customerName}' : '';
+    final msg = o.status == DrycleanStatus.ready
+        ? 'Bonjou$greet, lòd #${o.orderNumber} ou an PARE. Ou ka vin ranmase l. Mèsi!'
+        : 'Bonjou$greet, nou resevwa lòd #${o.orderNumber} ou an. Mèsi!';
+    final d = _digits(phone);
+    await showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          ListTile(
+            leading: const Icon(Icons.chat, color: Colors.green),
+            title: const Text('WhatsApp'),
+            onTap: () { Navigator.pop(ctx); _open('https://wa.me/$d?text=${Uri.encodeComponent(msg)}'); },
+          ),
+          ListTile(
+            leading: const Icon(Icons.sms, color: Colors.blue),
+            title: const Text('SMS'),
+            onTap: () { Navigator.pop(ctx); _open('sms:$phone?body=${Uri.encodeComponent(msg)}'); },
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Future<void> _open(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   @override
@@ -136,6 +214,7 @@ class DrycleanOrderDetailScreen extends ConsumerWidget {
                     if (o.customerName?.isNotEmpty == true) Text('👤 ${o.customerName}'),
                     if (o.customerPhone?.isNotEmpty == true) Text('📞 ${o.customerPhone}'),
                     if (o.readyDate != null) Text('📅 Pare: ${_d(o.readyDate!)}'),
+                    if (o.rackLocation?.isNotEmpty == true) Text('📍 Rack: ${o.rackLocation}'),
                     if (o.notes?.isNotEmpty == true) Padding(padding: const EdgeInsets.only(top: 4), child: Text('📝 ${o.notes}')),
                   ]),
                 ),
@@ -164,7 +243,17 @@ class DrycleanOrderDetailScreen extends ConsumerWidget {
                   child: FilledButton.icon(
                     icon: const Icon(Icons.arrow_forward),
                     label: Text('Pase nan: ${o.status.next!.emoji} ${o.status.next!.label}'),
-                    onPressed: () => _advance(ref, o),
+                    onPressed: () => _advance(context, ref, o),
+                  ),
+                ),
+              const SizedBox(height: 10),
+              if (o.customerPhone?.trim().isNotEmpty ?? false)
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.notifications_active, color: Colors.green),
+                    label: const Text('Avize kliyan (WhatsApp / SMS)'),
+                    onPressed: () => _notify(context, o),
                   ),
                 ),
               const SizedBox(height: 10),

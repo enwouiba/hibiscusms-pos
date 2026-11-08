@@ -501,6 +501,7 @@ class AppDatabase {
         customer_phone TEXT,
         order_number INTEGER NOT NULL,
         status TEXT NOT NULL DEFAULT 'received',
+        rack_location TEXT,
         ready_date TEXT,
         subtotal REAL NOT NULL DEFAULT 0,
         discount REAL NOT NULL DEFAULT 0,
@@ -631,6 +632,13 @@ class AppDatabase {
         await db.execute('CREATE INDEX IF NOT EXISTS idx_dco_store_status ON dryclean_orders(store_id, status)');
         await db.execute(_sqlDrycleanItems.replaceFirst('CREATE TABLE', 'CREATE TABLE IF NOT EXISTS'));
         await db.execute('CREATE INDEX IF NOT EXISTS idx_dcoi_order ON dryclean_order_items(order_id)');
+      } catch (_) {}
+    }
+
+    if (oldVersion < 9) {
+      // v9: rack/kote pou dry cleaning
+      try {
+        await db.execute('ALTER TABLE dryclean_orders ADD COLUMN rack_location TEXT');
       } catch (_) {}
     }
   }

@@ -24,6 +24,7 @@ class _DrycleanNewOrderScreenState extends ConsumerState<DrycleanNewOrderScreen>
   final _notesCtrl = TextEditingController();
   final List<DrycleanLineInput> _lines = [];
   DateTime _readyDate = DateTime.now().add(const Duration(days: 1));
+  bool _express = false;
   bool _saving = false;
 
   @override
@@ -168,7 +169,18 @@ class _DrycleanNewOrderScreenState extends ConsumerState<DrycleanNewOrderScreen>
           TextField(controller: _nameCtrl, decoration: const InputDecoration(labelText: 'Non kliyan', border: OutlineInputBorder(), prefixIcon: Icon(Icons.person))),
           const SizedBox(height: 12),
           TextField(controller: _phoneCtrl, decoration: const InputDecoration(labelText: 'Telefòn', border: OutlineInputBorder(), prefixIcon: Icon(Icons.phone)), keyboardType: TextInputType.phone),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
+          // Ekspres — pare menm jou a
+          SwitchListTile(
+            value: _express,
+            onChanged: (v) => setState(() {
+              _express = v;
+              if (v) _readyDate = DateTime.now();
+            }),
+            secondary: const Icon(Icons.bolt, color: Colors.orange),
+            title: const Text('⚡ Ekspres (pare menm jou a)'),
+          ),
+          const SizedBox(height: 8),
           // Dat pare
           ListTile(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: BorderSide(color: Colors.grey.shade400)),

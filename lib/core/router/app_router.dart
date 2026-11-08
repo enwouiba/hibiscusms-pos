@@ -17,6 +17,7 @@ import '../../features/products/presentation/product_form_screen.dart';
 import '../../features/dryclean/presentation/dryclean_new_order_screen.dart';
 import '../../features/dryclean/presentation/dryclean_order_detail_screen.dart';
 import '../../features/dryclean/presentation/dryclean_orders_screen.dart';
+import '../../features/dryclean/presentation/dryclean_reports_screen.dart';
 import '../../features/products/presentation/products_screen.dart';
 import '../../features/purchases/presentation/purchase_form_screen.dart';
 import '../../features/purchases/presentation/purchases_screen.dart';
@@ -61,6 +62,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // Pwodwi
       GoRoute(path: '/products', builder: (_, _) => const ProductsScreen()),
       GoRoute(path: '/dryclean', builder: (_, _) => const DrycleanOrdersScreen()),
+      GoRoute(path: '/dryclean/reports', builder: (_, _) => const DrycleanReportsScreen()),
       GoRoute(path: '/dryclean/new', builder: (_, _) => const DrycleanNewOrderScreen()),
       GoRoute(path: '/dryclean/:id', builder: (_, s) => DrycleanOrderDetailScreen(orderId: s.pathParameters['id']!)),
       GoRoute(path: '/products/new', builder: (_, _) => const ProductFormScreen()),

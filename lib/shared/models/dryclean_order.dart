@@ -72,6 +72,7 @@ class DrycleanOrder {
   final String? customerPhone;
   final int orderNumber;
   final DrycleanStatus status;
+  final String? rackLocation;
   final DateTime? readyDate;
   final double subtotal;
   final double discount;
@@ -92,6 +93,7 @@ class DrycleanOrder {
     this.customerPhone,
     required this.orderNumber,
     required this.status,
+    this.rackLocation,
     this.readyDate,
     required this.subtotal,
     this.discount = 0,
@@ -116,6 +118,7 @@ class DrycleanOrder {
         customerPhone: m['customer_phone'] as String?,
         orderNumber: (m['order_number'] as num).toInt(),
         status: DrycleanStatus.fromCode(m['status'] as String?),
+        rackLocation: m['rack_location'] as String?,
         readyDate: m['ready_date'] != null ? DateTime.tryParse(m['ready_date'] as String) : null,
         subtotal: (m['subtotal'] as num?)?.toDouble() ?? 0,
         discount: (m['discount'] as num?)?.toDouble() ?? 0,
