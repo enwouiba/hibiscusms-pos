@@ -31,6 +31,8 @@ class ReceiptData {
     this.logoBytes,
     this.footerText,
     this.customerName,
+    this.customerPhone,
+    this.customerIdDoc,
     this.cashierName,
     this.amountReceived,
     this.changeDue,
@@ -58,6 +60,8 @@ class ReceiptData {
   final Uint8List? logoBytes; // pou logo nan assets/
   final String? footerText;
   final String? customerName;
+  final String? customerPhone;
+  final String? customerIdDoc; // NIF/CIN kliyan
   final String? cashierName;
   final double? amountReceived;
   final double amountDue;
@@ -274,6 +278,12 @@ class PrinterService {
         _sanitize('Kliyan: ${data.customerName}'),
         styles: const PosStyles(bold: true),
       ));
+    }
+    if (data.customerPhone != null && data.customerPhone!.trim().isNotEmpty) {
+      bytes.addAll(gen.text(_sanitize('Tel: ${data.customerPhone}')));
+    }
+    if (data.customerIdDoc != null && data.customerIdDoc!.trim().isNotEmpty) {
+      bytes.addAll(gen.text(_sanitize('NIF/CIN: ${data.customerIdDoc}')));
     }
     if (data.cashierName != null) {
       bytes.addAll(gen.text(_sanitize('Sekretè: ${data.cashierName}')));

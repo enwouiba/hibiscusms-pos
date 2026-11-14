@@ -176,6 +176,8 @@ class HotelStayDetailScreen extends ConsumerWidget {
       ticketTitle: 'RESI OTÈL',
       numberLabel: 'Sejou',
       customerName: s.guestName,
+      customerPhone: s.guestPhone,
+      customerIdDoc: s.guestIdDoc,
       footerText: 'Mèsi pou vizit ou!',
     );
 
@@ -221,6 +223,7 @@ class HotelStayDetailScreen extends ConsumerWidget {
                     Text('${s.mode.emoji} ${s.mode.label} · ${s.duration} ${s.mode.unit}'),
                     if (s.guestName?.isNotEmpty == true) Text('👤 ${s.guestName}'),
                     if (s.guestPhone?.isNotEmpty == true) Text('📞 ${s.guestPhone}'),
+                    if (s.guestIdDoc?.isNotEmpty == true) Text('🪪 NIF/CIN: ${s.guestIdDoc}'),
                     Text('📥 Check-in: ${_dt(s.checkInAt)}'),
                     if (active) Text('⏳ Dwe fini: ${_dt(s.plannedEndAt)}'),
                     if (s.checkOutAt != null) Text('📤 Check-out: ${_dt(s.checkOutAt!)}'),

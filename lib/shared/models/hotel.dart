@@ -101,6 +101,7 @@ class HotelStay {
   final String roomNameSnapshot;
   final String? guestName;
   final String? guestPhone;
+  final String? guestIdDoc; // NIF/CIN kliyan
   final HotelRentalMode mode;
   final int duration; // kantite èdtan oswa nwit (chwazi nan check-in)
   final double rate; // tarif pa inite nan moman check-in (snapshot)
@@ -124,6 +125,7 @@ class HotelStay {
     required this.roomNameSnapshot,
     this.guestName,
     this.guestPhone,
+    this.guestIdDoc,
     required this.mode,
     required this.duration,
     required this.rate,
@@ -156,6 +158,7 @@ class HotelStay {
         roomNameSnapshot: m['room_name_snapshot'] as String? ?? '',
         guestName: m['guest_name'] as String?,
         guestPhone: m['guest_phone'] as String?,
+        guestIdDoc: m['guest_id_doc'] as String?,
         mode: HotelRentalMode.fromCode(m['mode'] as String?),
         duration: (m['duration'] as num?)?.toInt() ?? 1,
         rate: (m['rate'] as num?)?.toDouble() ?? 0,

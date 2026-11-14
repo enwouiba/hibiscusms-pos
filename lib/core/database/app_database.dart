@@ -570,6 +570,7 @@ class AppDatabase {
         room_name_snapshot TEXT,
         guest_name TEXT,
         guest_phone TEXT,
+        guest_id_doc TEXT,
         mode TEXT NOT NULL DEFAULT 'nightly',
         duration INTEGER NOT NULL DEFAULT 1,
         rate REAL NOT NULL DEFAULT 0,
@@ -705,6 +706,13 @@ class AppDatabase {
         await db.execute(_sqlHotelStays);
         await db.execute('CREATE INDEX IF NOT EXISTS idx_hs_store_status ON hotel_stays(store_id, status)');
         await db.execute('CREATE INDEX IF NOT EXISTS idx_hs_room ON hotel_stays(room_id, status)');
+      } catch (_) {}
+    }
+
+    if (oldVersion < 11) {
+      // v11: NIF/CIN kliyan sou sejou otèl
+      try {
+        await db.execute('ALTER TABLE hotel_stays ADD COLUMN guest_id_doc TEXT');
       } catch (_) {}
     }
   }

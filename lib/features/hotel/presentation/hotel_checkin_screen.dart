@@ -21,6 +21,7 @@ class HotelCheckinScreen extends ConsumerStatefulWidget {
 class _HotelCheckinScreenState extends ConsumerState<HotelCheckinScreen> {
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
+  final _idCtrl = TextEditingController();
   final _depositCtrl = TextEditingController();
   final _extraCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
@@ -49,7 +50,7 @@ class _HotelCheckinScreenState extends ConsumerState<HotelCheckinScreen> {
 
   @override
   void dispose() {
-    for (final c in [_nameCtrl, _phoneCtrl, _depositCtrl, _extraCtrl, _notesCtrl]) {
+    for (final c in [_nameCtrl, _phoneCtrl, _idCtrl, _depositCtrl, _extraCtrl, _notesCtrl]) {
       c.dispose();
     }
     super.dispose();
@@ -63,6 +64,16 @@ class _HotelCheckinScreenState extends ConsumerState<HotelCheckinScreen> {
   Future<void> _save() async {
     final room = _room;
     if (room == null) return;
+    // Obligatwa: non, telefòn, NIF/CIN
+    final name = _nameCtrl.text.trim();
+    final phone = _phoneCtrl.text.trim();
+    final idDoc = _idCtrl.text.trim();
+    if (name.isEmpty || phone.isEmpty || idDoc.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Non kliyan, Telefòn ak NIF/CIN yo obligatwa')),
+      );
+      return;
+    }
     setState(() => _saving = true);
     try {
       final storeId = await ref.read(tokenStoreProvider).activeStoreId();
@@ -73,8 +84,9 @@ class _HotelCheckinScreenState extends ConsumerState<HotelCheckinScreen> {
             room: room,
             userId: auth?.user.id,
             cashierName: auth?.user.name,
-            guestName: _nameCtrl.text.trim().isEmpty ? null : _nameCtrl.text.trim(),
-            guestPhone: _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
+            guestName: name,
+            guestPhone: phone,
+            guestIdDoc: idDoc,
             mode: _mode,
             duration: _duration,
             extra: _extra,
@@ -161,14 +173,21 @@ class _HotelCheckinScreenState extends ConsumerState<HotelCheckinScreen> {
           TextField(
             controller: _nameCtrl,
             decoration: const InputDecoration(
-              labelText: 'Non kliyan (opsyonèl)', border: OutlineInputBorder(), prefixIcon: Icon(Icons.person)),
+              labelText: 'Non kliyan *', border: OutlineInputBorder(), prefixIcon: Icon(Icons.person)),
+            textCapitalization: TextCapitalization.words,
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _phoneCtrl,
             decoration: const InputDecoration(
-              labelText: 'Telefòn (opsyonèl)', border: OutlineInputBorder(), prefixIcon: Icon(Icons.phone)),
+              labelText: 'Telefòn *', border: OutlineInputBorder(), prefixIcon: Icon(Icons.phone)),
             keyboardType: TextInputType.phone,
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _idCtrl,
+            decoration: const InputDecoration(
+              labelText: 'NIF / CIN *', border: OutlineInputBorder(), prefixIcon: Icon(Icons.badge)),
           ),
           const SizedBox(height: 12),
           Row(children: [
