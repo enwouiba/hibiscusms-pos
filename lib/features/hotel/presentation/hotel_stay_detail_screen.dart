@@ -234,15 +234,15 @@ class HotelStayDetailScreen extends ConsumerWidget {
         isProforma: !s.proformaValidated, // POFOMA toutan li poko valide
       ));
       final a4Name = prefs.getString('printer_a4_name');
-      // Windows: motè `printing`; Linux/Mac: CUPS `lp`.
-      final ok = isWindowsDesktop
-          ? await PrinterService.instance.printPdfViaPrinting(pdfBytes, printerName: a4Name)
-          : await PrinterService.instance.printPdfCups(pdfBytes, printerName: a4Name);
+      // Enprime A4 sou nenpòt platfòm: dirèk sou enprimant A4 la si posib,
+      // sinon louvri dyalòg enprime sistèm nan (pa janm echwe an silans).
+      final ok = await PrinterService.instance
+          .printPdfSmart(pdfBytes, printerName: a4Name, jobName: 'Fakti Otèl');
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(ok
             ? 'Fakti A4 voye sou enprimant A4 la.'
-            : 'Pa kapab enprime A4 — verifye CUPS / enprimant A4 nan Paramèt.'),
+            : 'Pa kapab enprime A4 — verifye enprimant A4 nan Paramèt.'),
       ));
       return;
     }

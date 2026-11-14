@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 // Modèl pou jesyon otèl — chanm ak sejou (check-in / check-out).
 //
 // De mòd lwaye:
@@ -176,6 +178,121 @@ class HotelStay {
         amountPaid: (m['amount_paid'] as num?)?.toDouble() ?? 0,
         notes: m['notes'] as String?,
         proformaValidated: ((m['proforma_validated'] as num?)?.toInt() ?? 0) == 1,
+        createdAt: DateTime.parse(m['created_at'] as String),
+      );
+}
+
+/// Yon liy nan yon pofoma: yon chanm ak dire/tarif li. Yon pofoma ka gen
+/// PLIZYÈ liy (kliyan ka pran plizyè chanm pou diferan nwit).
+class HotelProformaItem {
+  final String roomId;
+  final String roomName;
+  final HotelRentalMode mode;
+  final int duration; // kantite nwit oswa èdtan
+  final double rate; // tarif pa inite (snapshot)
+
+  const HotelProformaItem({
+    required this.roomId,
+    required this.roomName,
+    required this.mode,
+    required this.duration,
+    required this.rate,
+  });
+
+  double get lineTotal => rate * duration;
+
+  Map<String, dynamic> toJson() => {
+        'room_id': roomId,
+        'room_name': roomName,
+        'mode': mode.code,
+        'duration': duration,
+        'rate': rate,
+      };
+
+  factory HotelProformaItem.fromJson(Map<String, dynamic> j) => HotelProformaItem(
+        roomId: (j['room_id'] ?? '') as String,
+        roomName: (j['room_name'] ?? '') as String,
+        mode: HotelRentalMode.fromCode(j['mode'] as String?),
+        duration: (j['duration'] as num?)?.toInt() ?? 1,
+        rate: (j['rate'] as num?)?.toDouble() ?? 0,
+      );
+}
+
+/// Yon POFOMA (devi) ki SOVE — li ka gen plizyè chanm. Lè kliyan aksepte,
+/// `validated` pase `true` epi li vin yon FAKTI ofisyèl. Li sinkronize sou
+/// sèvè a menm jan ak lòt done otèl yo (chan `items` se yon tèks JSON).
+class HotelProforma {
+  final String id;
+  final String storeId;
+  final String? userId;
+  final String? cashierName;
+  final int number;
+  final String? guestName;
+  final String? guestPhone;
+  final String? guestIdDoc;
+  final List<HotelProformaItem> items;
+  final double extra;
+  final double discount;
+  final double total;
+  final bool validated; // false = pofoma (devi), true = fakti valide
+  final DateTime? validatedAt;
+  final String? notes;
+  final DateTime createdAt;
+
+  const HotelProforma({
+    required this.id,
+    required this.storeId,
+    this.userId,
+    this.cashierName,
+    required this.number,
+    this.guestName,
+    this.guestPhone,
+    this.guestIdDoc,
+    required this.items,
+    this.extra = 0,
+    this.discount = 0,
+    required this.total,
+    this.validated = false,
+    this.validatedAt,
+    this.notes,
+    required this.createdAt,
+  });
+
+  double get itemsTotal => items.fold(0.0, (s, i) => s + i.lineTotal);
+  int get roomCount => items.length;
+
+  static List<HotelProformaItem> _parseItems(dynamic raw) {
+    try {
+      final dynamic decoded = raw is String
+          ? (raw.trim().isEmpty ? const [] : jsonDecode(raw))
+          : (raw ?? const []);
+      if (decoded is List) {
+        return decoded
+            .map((e) => HotelProformaItem.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
+      }
+    } catch (_) {}
+    return <HotelProformaItem>[];
+  }
+
+  factory HotelProforma.fromMap(Map<String, dynamic> m) => HotelProforma(
+        id: m['id'] as String,
+        storeId: m['store_id'] as String,
+        userId: m['user_id'] as String?,
+        cashierName: m['cashier_name'] as String?,
+        number: (m['proforma_number'] as num?)?.toInt() ?? 0,
+        guestName: m['guest_name'] as String?,
+        guestPhone: m['guest_phone'] as String?,
+        guestIdDoc: m['guest_id_doc'] as String?,
+        items: _parseItems(m['items']),
+        extra: (m['extra'] as num?)?.toDouble() ?? 0,
+        discount: (m['discount'] as num?)?.toDouble() ?? 0,
+        total: (m['total'] as num?)?.toDouble() ?? 0,
+        validated: ((m['validated'] as num?)?.toInt() ?? 0) == 1,
+        validatedAt: m['validated_at'] != null
+            ? DateTime.tryParse(m['validated_at'] as String)
+            : null,
+        notes: m['notes'] as String?,
         createdAt: DateTime.parse(m['created_at'] as String),
       );
 }

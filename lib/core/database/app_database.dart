@@ -492,6 +492,9 @@ class AppDatabase {
     batch.execute(_sqlHotelStays);
     batch.execute('CREATE INDEX idx_hs_store_status ON hotel_stays(store_id, status)');
     batch.execute('CREATE INDEX idx_hs_room ON hotel_stays(room_id, status)');
+    // Otèl — pofoma (devi) milti-chanm (v13)
+    batch.execute(_sqlHotelProformas);
+    batch.execute('CREATE INDEX idx_hp_store ON hotel_proformas(store_id)');
 
     await batch.commit(noResult: true);
   }
@@ -584,6 +587,31 @@ class AppDatabase {
         amount_paid REAL NOT NULL DEFAULT 0,
         notes TEXT,
         proforma_validated INTEGER NOT NULL DEFAULT 0,
+        version TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        deleted_at TEXT
+      )
+  ''';
+
+  static const String _sqlHotelProformas = '''
+      CREATE TABLE hotel_proformas (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT,
+        store_id TEXT,
+        user_id TEXT,
+        cashier_name TEXT,
+        proforma_number INTEGER NOT NULL,
+        guest_name TEXT,
+        guest_phone TEXT,
+        guest_id_doc TEXT,
+        items TEXT NOT NULL DEFAULT '[]',
+        extra REAL NOT NULL DEFAULT 0,
+        discount REAL NOT NULL DEFAULT 0,
+        total REAL NOT NULL DEFAULT 0,
+        validated INTEGER NOT NULL DEFAULT 0,
+        validated_at TEXT,
+        notes TEXT,
         version TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
@@ -721,6 +749,14 @@ class AppDatabase {
       // v12: pofoma valide (devi -> fakti) pou sejou otèl
       try {
         await db.execute('ALTER TABLE hotel_stays ADD COLUMN proforma_validated INTEGER NOT NULL DEFAULT 0');
+      } catch (_) {}
+    }
+
+    if (oldVersion < 13) {
+      // v13: pofoma (devi) milti-chanm — tab pa li menm, ki sinkronize
+      try {
+        await db.execute(_sqlHotelProformas.replaceFirst('CREATE TABLE', 'CREATE TABLE IF NOT EXISTS'));
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_hp_store ON hotel_proformas(store_id)');
       } catch (_) {}
     }
   }

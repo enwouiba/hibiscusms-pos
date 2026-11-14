@@ -20,6 +20,8 @@ import '../../features/dryclean/presentation/dryclean_orders_screen.dart';
 import '../../features/dryclean/presentation/dryclean_reports_screen.dart';
 import '../../features/hotel/presentation/hotel_checkin_screen.dart';
 import '../../features/hotel/presentation/hotel_proforma_screen.dart';
+import '../../features/hotel/presentation/hotel_proforma_list_screen.dart';
+import '../../features/hotel/presentation/hotel_proforma_detail_screen.dart';
 import '../../features/hotel/presentation/hotel_reports_screen.dart';
 import '../../features/hotel/presentation/hotel_room_form_screen.dart';
 import '../../features/hotel/presentation/hotel_rooms_screen.dart';
@@ -75,7 +77,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // Otèl
       GoRoute(path: '/hotel', builder: (_, _) => const HotelRoomsScreen()),
       GoRoute(path: '/hotel/stays', builder: (_, _) => const HotelStaysScreen()),
+      GoRoute(path: '/hotel/proformas', builder: (_, _) => const HotelProformaListScreen()),
       GoRoute(path: '/hotel/proforma', builder: (_, _) => const HotelProformaScreen()),
+      GoRoute(
+        path: '/hotel/proforma/:id',
+        builder: (_, s) => HotelProformaDetailScreen(
+          proformaId: s.pathParameters['id']!,
+          autoPrint: s.uri.queryParameters['print'] == '1',
+        ),
+      ),
       GoRoute(path: '/hotel/reports', builder: (_, _) => const HotelReportsScreen()),
       GoRoute(path: '/hotel/room/new', builder: (_, _) => const HotelRoomFormScreen()),
       GoRoute(path: '/hotel/room/:id', builder: (_, s) => HotelRoomFormScreen(roomId: s.pathParameters['id'])),

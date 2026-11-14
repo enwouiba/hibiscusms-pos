@@ -5,6 +5,22 @@ import 'package:pdf/widgets.dart' as pw;
 
 import '../../../core/utils/money_formatter.dart';
 
+/// Yon liy detay nan yon fakti/pofoma A4 (yon chanm).
+class InvoiceLine {
+  final String description;
+  final int qty;
+  final String unitLabel;
+  final double rate;
+  final double total;
+  const InvoiceLine({
+    required this.description,
+    required this.qty,
+    required this.unitLabel,
+    required this.rate,
+    required this.total,
+  });
+}
+
 /// Done pou yon fakti A4 (resi sejou nwit otèl).
 class InvoiceData {
   final String businessName;
@@ -22,12 +38,14 @@ class InvoiceData {
   final String? guestPhone;
   final String? guestIdDoc;
 
-  final String roomName;
+  final String? roomName;
   final String modeLabel; // "Pa nwit"
   final String unitLabel; // "nwit"
   final int duration;
   final double rate;
   final double roomCharge;
+  /// Si l non-vid, fakti a montre PLIZYÈ liy chanm olye yon sèl.
+  final List<InvoiceLine>? lines;
   final double extra;
   final double discount;
   final double total;
@@ -49,12 +67,13 @@ class InvoiceData {
     this.guestName,
     this.guestPhone,
     this.guestIdDoc,
-    required this.roomName,
-    required this.modeLabel,
-    required this.unitLabel,
-    required this.duration,
-    required this.rate,
-    required this.roomCharge,
+    this.roomName,
+    this.modeLabel = '',
+    this.unitLabel = '',
+    this.duration = 1,
+    this.rate = 0,
+    this.roomCharge = 0,
+    this.lines,
     this.extra = 0,
     this.discount = 0,
     required this.total,
@@ -77,6 +96,20 @@ class InvoicePdf {
     final doc = pw.Document();
     final accent = PdfColor.fromInt(0xFF0D9488);
     final grey = PdfColors.grey700;
+
+    // Liy detay yo: swa milti-chanm (pofoma), swa yon sèl chanm (sejou).
+    final List<InvoiceLine> lines = (d.lines != null && d.lines!.isNotEmpty)
+        ? d.lines!
+        : [
+            InvoiceLine(
+              description: 'Chanm ${d.roomName ?? ''} (${d.modeLabel})',
+              qty: d.duration,
+              unitLabel: d.unitLabel,
+              rate: d.rate,
+              total: d.roomCharge,
+            ),
+          ];
+    final double roomsSubtotal = lines.fold<double>(0, (s, l) => s + l.total);
 
     pw.Widget kv(String k, String v, {bool bold = false}) => pw.Padding(
           padding: const pw.EdgeInsets.symmetric(vertical: 1.5),
@@ -150,12 +183,13 @@ class InvoicePdf {
                   _cell('Total', bold: true, align: pw.TextAlign.right),
                 ],
               ),
-              pw.TableRow(children: [
-                _cell('Chanm ${d.roomName} (${d.modeLabel})'),
-                _cell('${d.duration} ${d.unitLabel}', align: pw.TextAlign.center),
-                _cell(MoneyFormatter.format(d.rate), align: pw.TextAlign.right),
-                _cell(MoneyFormatter.format(d.roomCharge), align: pw.TextAlign.right),
-              ]),
+              for (final l in lines)
+                pw.TableRow(children: [
+                  _cell(l.description),
+                  _cell('${l.qty} ${l.unitLabel}', align: pw.TextAlign.center),
+                  _cell(MoneyFormatter.format(l.rate), align: pw.TextAlign.right),
+                  _cell(MoneyFormatter.format(l.total), align: pw.TextAlign.right),
+                ]),
               if (d.extra > 0)
                 pw.TableRow(children: [
                   _cell('Chaj anplis'),
@@ -172,7 +206,7 @@ class InvoicePdf {
             child: pw.SizedBox(
               width: 240,
               child: pw.Column(children: [
-                kv('Soustotal', MoneyFormatter.format(d.roomCharge + d.extra)),
+                kv('Soustotal', MoneyFormatter.format(roomsSubtotal + d.extra)),
                 if (d.discount > 0) kv('Rabè', '- ${MoneyFormatter.format(d.discount)}'),
                 pw.Divider(),
                 kv('TOTAL', MoneyFormatter.format(d.total), bold: true),

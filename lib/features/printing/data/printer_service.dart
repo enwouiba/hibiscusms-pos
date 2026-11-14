@@ -474,6 +474,41 @@ class PrinterService {
     }
   }
 
+  /// Enprime yon PDF (fakti/pofoma A4) sou NENPÒT platfòm, san janm echwe an silans.
+  ///
+  /// • Sou òdinatè (Windows/Linux/macOS): eseye voye dirèk sou enprimant A4 ki
+  ///   chwazi a (`printerName`). Si sa echwe (non pa jwenn, enprimant pa reponn),
+  ///   li louvri dyalòg enprime sistèm nan pou itilizatè a ka chwazi enprimant lan.
+  /// • Sou telefòn/tablèt (Android/iOS): `lp` pa egziste — nou louvri dyalòg
+  ///   enprime Android la (itilizatè chwazi nenpòt enprimant: Wi-Fi, sove, elatriye).
+  ///
+  /// Konsa pofoma/fakti A4 la TOUJOU rive sou yon enprimant, menm si enprimant
+  /// tèmik « moman » an se sèl ki konfigire.
+  Future<bool> printPdfSmart(List<int> pdfBytes, {String? printerName, String jobName = 'Dokiman'}) async {
+    final bytes = Uint8List.fromList(pdfBytes);
+    bool isDesktop = false;
+    try {
+      isDesktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+    } catch (_) {}
+    try {
+      if (isDesktop) {
+        final ok = await printPdfViaPrinting(bytes, printerName: printerName);
+        if (ok) return true;
+        // Fallback: dyalòg sistèm (itilizatè chwazi enprimant A4 la)
+        return await Printing.layoutPdf(onLayout: (_) async => bytes, name: jobName);
+      }
+      // Mobil: dyalòg enprime sistèm nan
+      return await Printing.layoutPdf(onLayout: (_) async => bytes, name: jobName);
+    } catch (_) {
+      // Dènye rekou: toujou eseye dyalòg la
+      try {
+        return await Printing.layoutPdf(onLayout: (_) async => bytes, name: jobName);
+      } catch (_) {
+        return false;
+      }
+    }
+  }
+
   /// Enprime yon PDF (fakti A4) sou yon enprimant sistèm via CUPS.
   /// Pou resi NWIT otèl yo sou yon enprimant papye A4 regilye.
   /// `printerName` vid = enprimant default la.

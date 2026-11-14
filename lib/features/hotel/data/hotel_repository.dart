@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:ulid/ulid.dart';
@@ -378,6 +380,120 @@ class HotelRepository {
     final rows = await _db.query('hotel_stays', where: 'id = ?', whereArgs: [id], limit: 1);
     if (rows.isEmpty) return null;
     return HotelStay.fromMap(rows.first);
+  }
+
+  // ───────────────────────── Pofoma (devi milti-chanm) ─────────────────────────
+
+  Future<int> _nextProformaNumber(String storeId) async {
+    final r = await _db.rawQuery(
+      'SELECT COALESCE(MAX(proforma_number), 0) AS m FROM hotel_proformas WHERE store_id = ?',
+      [storeId],
+    );
+    return ((r.first['m'] as num?)?.toInt() ?? 0) + 1;
+  }
+
+  /// Kreye yon pofoma ki SOVE (ak plizyè chanm). Retounen objè a.
+  Future<HotelProforma> createProforma({
+    required String storeId,
+    String? userId,
+    String? cashierName,
+    String? guestName,
+    String? guestPhone,
+    String? guestIdDoc,
+    required List<HotelProformaItem> items,
+    double extra = 0,
+    double discount = 0,
+    String? notes,
+  }) async {
+    final now = DateTime.now().toUtc();
+    final id = Ulid().toCanonical();
+    final number = await _nextProformaNumber(storeId);
+    final version = _hlc.next();
+    final itemsTotal = items.fold<double>(0, (s, i) => s + i.lineTotal);
+    final total = (itemsTotal + extra - discount).clamp(0, double.infinity).toDouble();
+    final itemsJson = jsonEncode(items.map((e) => e.toJson()).toList());
+
+    final map = <String, dynamic>{
+      'id': id,
+      'store_id': storeId,
+      'user_id': userId,
+      'cashier_name': cashierName,
+      'proforma_number': number,
+      'guest_name': guestName,
+      'guest_phone': guestPhone,
+      'guest_id_doc': guestIdDoc,
+      'items': itemsJson,
+      'extra': extra,
+      'discount': discount,
+      'total': total,
+      'validated': 0,
+      'validated_at': null,
+      'notes': notes,
+      'version': version,
+      'created_at': now.toIso8601String(),
+      'updated_at': now.toIso8601String(),
+    };
+
+    await _db.transaction((txn) async {
+      await txn.insert('hotel_proformas', map);
+      await _outbox.enqueue(
+        txn: txn, tableName: 'hotel_proformas', rowId: id, op: 'create',
+        payload: map, overrideVersion: version,
+      );
+    });
+    return HotelProforma.fromMap(map);
+  }
+
+  Future<List<HotelProforma>> listProformas(String storeId) async {
+    final rows = await _db.query(
+      'hotel_proformas',
+      where: 'store_id = ? AND (deleted_at IS NULL)',
+      whereArgs: [storeId],
+      orderBy: 'created_at DESC',
+    );
+    return rows.map(HotelProforma.fromMap).toList();
+  }
+
+  Future<HotelProforma?> findProforma(String id) async {
+    final rows = await _db.query('hotel_proformas', where: 'id = ?', whereArgs: [id], limit: 1);
+    if (rows.isEmpty) return null;
+    return HotelProforma.fromMap(rows.first);
+  }
+
+  /// Valide yon pofoma → li vin yon fakti ofisyèl (si kliyan aksepte).
+  Future<void> markProformaValidated(String id) async {
+    final now = DateTime.now().toUtc();
+    final version = _hlc.next();
+    await _db.transaction((txn) async {
+      final rows = await txn.query('hotel_proformas', where: 'id = ?', whereArgs: [id], limit: 1);
+      if (rows.isEmpty) return;
+      final map = Map<String, dynamic>.from(rows.first);
+      map['validated'] = 1;
+      map['validated_at'] = now.toIso8601String();
+      map['version'] = version;
+      map['updated_at'] = now.toIso8601String();
+      await txn.update('hotel_proformas', map, where: 'id = ?', whereArgs: [id]);
+      await _outbox.enqueue(
+        txn: txn, tableName: 'hotel_proformas', rowId: id, op: 'update',
+        payload: map, overrideVersion: version,
+      );
+    });
+  }
+
+  Future<void> deleteProforma(String id) async {
+    final now = DateTime.now().toUtc();
+    final version = _hlc.next();
+    await _db.transaction((txn) async {
+      await txn.update(
+        'hotel_proformas',
+        {'deleted_at': now.toIso8601String(), 'updated_at': now.toIso8601String(), 'version': version},
+        where: 'id = ?', whereArgs: [id],
+      );
+      await _outbox.enqueue(
+        txn: txn, tableName: 'hotel_proformas', rowId: id, op: 'delete',
+        payload: {'id': id}, overrideVersion: version,
+      );
+    });
   }
 
   /// Estatistik otèl pou ekran Rapò a.
