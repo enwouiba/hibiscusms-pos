@@ -288,6 +288,7 @@ class _BusinessSettingsScreenState extends ConsumerState<BusinessSettingsScreen>
                   items: const [
                     DropdownMenuItem(value: 'retail', child: Text('🛒 Magazen (vann pwodwi)')),
                     DropdownMenuItem(value: 'drycleaning', child: Text('👔 Dry Cleaning (netwayaj rad)')),
+                    DropdownMenuItem(value: 'hotel', child: Text('🏨 Otèl (jesyon chanm)')),
                   ],
                   onChanged: (v) => setState(() => _storeType = v ?? 'retail'),
                 ),

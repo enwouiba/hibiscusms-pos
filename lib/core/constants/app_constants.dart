@@ -6,7 +6,7 @@ class AppConstants {
   static const String appName = String.fromEnvironment('APP_NAME', defaultValue: 'WalCash POS');
   static const String appTagline = String.fromEnvironment('APP_TAGLINE', defaultValue: 'POS');
   static const String dbName = 'walcash_pos.db';
-  static const int dbVersion = 9;
+  static const int dbVersion = 10;
 
   static const String defaultCurrency = 'USD';
   static const String defaultLocale = 'ht';

@@ -30,6 +30,7 @@ class HomeScreen extends ConsumerWidget {
     final auth = ref.watch(authControllerProvider).valueOrNull;
     final sync = ref.watch(syncProgressProvider);
     final isDry = ref.watch(_activeStoreProvider).valueOrNull?.isDryCleaning ?? false;
+    final isHotel = ref.watch(_activeStoreProvider).valueOrNull?.isHotel ?? false;
 
     if (auth == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -88,7 +89,7 @@ class HomeScreen extends ConsumerWidget {
               const _EarningsCard(),
             ],
             const SizedBox(height: 16),
-            _MenuGrid(canManage: auth.highestLevel(null) >= 2, isDryCleaning: isDry),
+            _MenuGrid(canManage: auth.highestLevel(null) >= 2, isDryCleaning: isDry, isHotel: isHotel),
           ],
         ),
       ),
@@ -546,13 +547,26 @@ class _SyncBanner extends ConsumerWidget {
 }
 
 class _MenuGrid extends StatelessWidget {
-  const _MenuGrid({required this.canManage, this.isDryCleaning = false});
+  const _MenuGrid({required this.canManage, this.isDryCleaning = false, this.isHotel = false});
   final bool canManage;
   final bool isDryCleaning;
+  final bool isHotel;
 
   @override
   Widget build(BuildContext context) {
-    final items = isDryCleaning
+    final items = isHotel
+        ? <_MenuItem>[
+            _MenuItem('Chanm', Icons.hotel, '/hotel', primary: true),
+            _MenuItem('Sejou yo', Icons.list_alt, '/hotel/stays'),
+            _MenuItem('Kliyan', Icons.people, '/customers'),
+            _MenuItem('Kès', Icons.account_balance_wallet, '/cash-sessions'),
+            if (canManage) _MenuItem('Rapò', Icons.bar_chart, '/hotel/reports'),
+            if (canManage) _MenuItem('Itilizatè', Icons.people_alt, '/users'),
+            if (canManage) _MenuItem('Plan', Icons.workspace_premium, '/plans'),
+            if (canManage) _MenuItem('APK Pa Mwen', Icons.android, '/my-apk'),
+            _MenuItem('Paramèt', Icons.settings, '/settings'),
+          ]
+        : isDryCleaning
         ? <_MenuItem>[
             _MenuItem('Nouvo Lòd', Icons.add_box, '/dryclean/new', primary: true),
             _MenuItem('Lòd yo', Icons.local_laundry_service, '/dryclean'),

@@ -1,9 +1,19 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../printing/data/printer_service.dart';
 import '../../printing/presentation/print_controller.dart';
+
+bool get _isDesktop {
+  try {
+    return Platform.isLinux || Platform.isWindows || Platform.isMacOS;
+  } catch (_) {
+    return false;
+  }
+}
 
 final _pairedProvider = FutureProvider.autoDispose<List<BluetoothPrinterDevice>>((ref) async {
   return ref.watch(printStateProvider.notifier).scanPaired();
@@ -74,6 +84,33 @@ class PrinterSettingsScreen extends ConsumerWidget {
                     onChanged: (v) => ref.read(printStateProvider.notifier).setMode(v!),
                     contentPadding: EdgeInsets.zero,
                   ),
+                  // Transpò desktop (USB / Rezo / CUPS) — sou òdinatè sèlman
+                  if (_isDesktop) ...[
+                    RadioListTile<PrinterMode>(
+                      title: const Text('USB / Aparèy (ESC/POS)'),
+                      subtitle: const Text('Enprimant USB dirèk — egz. Epson TM-T20II (/dev/usb/lp0)'),
+                      value: PrinterMode.usb,
+                      groupValue: state.mode,
+                      onChanged: (v) => ref.read(printStateProvider.notifier).setMode(v!),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    RadioListTile<PrinterMode>(
+                      title: const Text('Rezo (TCP 9100)'),
+                      subtitle: const Text('Enprimant rezo ESC/POS pa IP'),
+                      value: PrinterMode.network,
+                      groupValue: state.mode,
+                      onChanged: (v) => ref.read(printStateProvider.notifier).setMode(v!),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    RadioListTile<PrinterMode>(
+                      title: const Text('Sistèm / CUPS (lp)'),
+                      subtitle: const Text('Nenpòt enprimant ki enstale nan sistèm nan'),
+                      value: PrinterMode.cups,
+                      groupValue: state.mode,
+                      onChanged: (v) => ref.read(printStateProvider.notifier).setMode(v!),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
@@ -104,6 +141,18 @@ class PrinterSettingsScreen extends ConsumerWidget {
           if (state.mode == PrinterMode.bluetooth) ...[
             const SizedBox(height: 16),
             _BluetoothSection(),
+          ],
+          if (state.mode == PrinterMode.usb) ...[
+            const SizedBox(height: 16),
+            const _UsbSection(),
+          ],
+          if (state.mode == PrinterMode.network) ...[
+            const SizedBox(height: 16),
+            const _NetworkSection(),
+          ],
+          if (state.mode == PrinterMode.cups) ...[
+            const SizedBox(height: 16),
+            const _CupsSection(),
           ],
 
           if (state.lastError != null) ...[
@@ -189,6 +238,187 @@ class _BluetoothSection extends ConsumerWidget {
           error: (e, _) => Text('Erè: $e'),
         ),
       ],
+    );
+  }
+}
+
+/// Konfigirasyon USB / Aparèy: chemen aparèy la (egz. /dev/usb/lp0).
+class _UsbSection extends StatefulWidget {
+  const _UsbSection();
+  @override
+  State<_UsbSection> createState() => _UsbSectionState();
+}
+
+class _UsbSectionState extends State<_UsbSection> {
+  final _ctrl = TextEditingController();
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((p) {
+      if (!mounted) return;
+      setState(() {
+        _ctrl.text = p.getString('printer_device_path') ?? '/dev/usb/lp0';
+        _loaded = true;
+      });
+    });
+  }
+
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  Future<void> _save() async {
+    final p = await SharedPreferences.getInstance();
+    await p.setString('printer_device_path', _ctrl.text.trim());
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Chemen aparèy la sove')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_loaded) return const SizedBox.shrink();
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Enprimant USB', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          const Text('Chemen aparèy la nan sistèm nan. Sou Linux, yon enprimant USB konekte '
+              'parèt kòm /dev/usb/lp0 (oswa lp1…).', style: TextStyle(fontSize: 12, color: Colors.grey)),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _ctrl,
+            decoration: const InputDecoration(labelText: 'Chemen aparèy', border: OutlineInputBorder(), hintText: '/dev/usb/lp0'),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(width: double.infinity, child: FilledButton.icon(icon: const Icon(Icons.save), label: const Text('Sove'), onPressed: _save)),
+          const SizedBox(height: 8),
+          const Text('Nòt: itilizatè a dwe gen dwa ekri sou aparèy la (gwoup « lp » sou Linux).',
+              style: TextStyle(fontSize: 11, color: Colors.grey)),
+        ]),
+      ),
+    );
+  }
+}
+
+/// Konfigirasyon Rezo: IP + pò.
+class _NetworkSection extends StatefulWidget {
+  const _NetworkSection();
+  @override
+  State<_NetworkSection> createState() => _NetworkSectionState();
+}
+
+class _NetworkSectionState extends State<_NetworkSection> {
+  final _host = TextEditingController();
+  final _port = TextEditingController(text: '9100');
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((p) {
+      if (!mounted) return;
+      setState(() {
+        _host.text = p.getString('printer_host') ?? '';
+        _port.text = (p.getInt('printer_port') ?? 9100).toString();
+        _loaded = true;
+      });
+    });
+  }
+
+  @override
+  void dispose() { _host.dispose(); _port.dispose(); super.dispose(); }
+
+  Future<void> _save() async {
+    final p = await SharedPreferences.getInstance();
+    await p.setString('printer_host', _host.text.trim());
+    await p.setInt('printer_port', int.tryParse(_port.text.trim()) ?? 9100);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enprimant rezo sove')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_loaded) return const SizedBox.shrink();
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Enprimant Rezo (ESC/POS)', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 10),
+          Row(children: [
+            Expanded(flex: 3, child: TextField(controller: _host, decoration: const InputDecoration(labelText: 'Adrès IP', border: OutlineInputBorder(), hintText: '192.168.1.50'))),
+            const SizedBox(width: 10),
+            Expanded(flex: 1, child: TextField(controller: _port, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Pò', border: OutlineInputBorder()))),
+          ]),
+          const SizedBox(height: 10),
+          SizedBox(width: double.infinity, child: FilledButton.icon(icon: const Icon(Icons.save), label: const Text('Sove'), onPressed: _save)),
+        ]),
+      ),
+    );
+  }
+}
+
+/// Konfigirasyon CUPS: non enprimant sistèm (opsyonèl).
+class _CupsSection extends StatefulWidget {
+  const _CupsSection();
+  @override
+  State<_CupsSection> createState() => _CupsSectionState();
+}
+
+class _CupsSectionState extends State<_CupsSection> {
+  final _ctrl = TextEditingController();
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((p) {
+      if (!mounted) return;
+      setState(() {
+        _ctrl.text = p.getString('printer_cups_name') ?? '';
+        _loaded = true;
+      });
+    });
+  }
+
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  Future<void> _save() async {
+    final p = await SharedPreferences.getInstance();
+    await p.setString('printer_cups_name', _ctrl.text.trim());
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enprimant sistèm sove')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_loaded) return const SizedBox.shrink();
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Enprimant Sistèm (CUPS)', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          const Text('Voye resi a sou nenpòt enprimant ki enstale nan sistèm nan via « lp -o raw ». '
+              'Kite vid pou itilize enprimant default la.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _ctrl,
+            decoration: const InputDecoration(labelText: 'Non enprimant (opsyonèl)', border: OutlineInputBorder(), hintText: 'EPSON_TM_T20II'),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(width: double.infinity, child: FilledButton.icon(icon: const Icon(Icons.save), label: const Text('Sove'), onPressed: _save)),
+          const SizedBox(height: 8),
+          const Text('Mande CUPS aktif epi enprimant lan enstale (lpstat -p pou lis la).',
+              style: TextStyle(fontSize: 11, color: Colors.grey)),
+        ]),
+      ),
     );
   }
 }

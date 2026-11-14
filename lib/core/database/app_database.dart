@@ -486,6 +486,13 @@ class AppDatabase {
     batch.execute(_sqlDrycleanItems);
     batch.execute('CREATE INDEX idx_dcoi_order ON dryclean_order_items(order_id)');
 
+    // Otèl — chanm ak sejou (v10)
+    batch.execute(_sqlHotelRooms);
+    batch.execute('CREATE INDEX idx_hr_store_status ON hotel_rooms(store_id, status)');
+    batch.execute(_sqlHotelStays);
+    batch.execute('CREATE INDEX idx_hs_store_status ON hotel_stays(store_id, status)');
+    batch.execute('CREATE INDEX idx_hs_room ON hotel_stays(room_id, status)');
+
     await batch.commit(noResult: true);
   }
 
@@ -531,6 +538,54 @@ class AppDatabase {
         version TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
+      )
+  ''';
+
+  static const String _sqlHotelRooms = '''
+      CREATE TABLE hotel_rooms (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT,
+        store_id TEXT,
+        name TEXT NOT NULL,
+        room_type TEXT,
+        price_per_night REAL NOT NULL DEFAULT 0,
+        price_per_hour REAL NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'available',
+        notes TEXT,
+        version TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        deleted_at TEXT
+      )
+  ''';
+
+  static const String _sqlHotelStays = '''
+      CREATE TABLE hotel_stays (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT,
+        store_id TEXT,
+        user_id TEXT,
+        cashier_name TEXT,
+        room_id TEXT NOT NULL,
+        room_name_snapshot TEXT,
+        guest_name TEXT,
+        guest_phone TEXT,
+        mode TEXT NOT NULL DEFAULT 'nightly',
+        duration INTEGER NOT NULL DEFAULT 1,
+        rate REAL NOT NULL DEFAULT 0,
+        stay_number INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'active',
+        check_in_at TEXT NOT NULL,
+        check_out_at TEXT,
+        extra REAL NOT NULL DEFAULT 0,
+        discount REAL NOT NULL DEFAULT 0,
+        total REAL NOT NULL DEFAULT 0,
+        amount_paid REAL NOT NULL DEFAULT 0,
+        notes TEXT,
+        version TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        deleted_at TEXT
       )
   ''';
 
@@ -639,6 +694,17 @@ class AppDatabase {
       // v9: rack/kote pou dry cleaning
       try {
         await db.execute('ALTER TABLE dryclean_orders ADD COLUMN rack_location TEXT');
+      } catch (_) {}
+    }
+
+    if (oldVersion < 10) {
+      // v10: jesyon otèl — chanm ak sejou
+      try {
+        await db.execute(_sqlHotelRooms);
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_hr_store_status ON hotel_rooms(store_id, status)');
+        await db.execute(_sqlHotelStays);
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_hs_store_status ON hotel_stays(store_id, status)');
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_hs_room ON hotel_stays(room_id, status)');
       } catch (_) {}
     }
   }

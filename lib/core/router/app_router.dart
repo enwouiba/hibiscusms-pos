@@ -18,6 +18,12 @@ import '../../features/dryclean/presentation/dryclean_new_order_screen.dart';
 import '../../features/dryclean/presentation/dryclean_order_detail_screen.dart';
 import '../../features/dryclean/presentation/dryclean_orders_screen.dart';
 import '../../features/dryclean/presentation/dryclean_reports_screen.dart';
+import '../../features/hotel/presentation/hotel_checkin_screen.dart';
+import '../../features/hotel/presentation/hotel_reports_screen.dart';
+import '../../features/hotel/presentation/hotel_room_form_screen.dart';
+import '../../features/hotel/presentation/hotel_rooms_screen.dart';
+import '../../features/hotel/presentation/hotel_stay_detail_screen.dart';
+import '../../features/hotel/presentation/hotel_stays_screen.dart';
 import '../../features/products/presentation/products_screen.dart';
 import '../../features/purchases/presentation/purchase_form_screen.dart';
 import '../../features/purchases/presentation/purchases_screen.dart';
@@ -65,6 +71,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/dryclean/reports', builder: (_, _) => const DrycleanReportsScreen()),
       GoRoute(path: '/dryclean/new', builder: (_, _) => const DrycleanNewOrderScreen()),
       GoRoute(path: '/dryclean/:id', builder: (_, s) => DrycleanOrderDetailScreen(orderId: s.pathParameters['id']!)),
+      // Otèl
+      GoRoute(path: '/hotel', builder: (_, _) => const HotelRoomsScreen()),
+      GoRoute(path: '/hotel/stays', builder: (_, _) => const HotelStaysScreen()),
+      GoRoute(path: '/hotel/reports', builder: (_, _) => const HotelReportsScreen()),
+      GoRoute(path: '/hotel/room/new', builder: (_, _) => const HotelRoomFormScreen()),
+      GoRoute(path: '/hotel/room/:id', builder: (_, s) => HotelRoomFormScreen(roomId: s.pathParameters['id'])),
+      GoRoute(path: '/hotel/checkin/:roomId', builder: (_, s) => HotelCheckinScreen(roomId: s.pathParameters['roomId']!)),
+      GoRoute(path: '/hotel/stay/:id', builder: (_, s) => HotelStayDetailScreen(stayId: s.pathParameters['id']!)),
       GoRoute(path: '/products/new', builder: (_, _) => const ProductFormScreen()),
       GoRoute(
         path: '/products/:id',

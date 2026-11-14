@@ -157,8 +157,8 @@ class PrinterService {
     await PrintBluetoothThermal.disconnect;
   }
 
-  Future<bool> printTest({String text = 'WalCash POS - Tès enprime'}) async {
-    if (!await isConnected()) return false;
+  /// Byte ESC/POS yon tès senp (san voye yo).
+  Future<List<int>> buildTestBytes({String text = 'WalCash POS - Tès enprime'}) async {
     final profile = await CapabilityProfile.load();
     final generator = Generator(PaperSize.mm58, profile);
     final bytes = <int>[];
@@ -172,12 +172,17 @@ class PrinterService {
     ));
     bytes.addAll(generator.feed(2));
     bytes.addAll(generator.cut());
-    return PrintBluetoothThermal.writeBytes(bytes);
+    return bytes;
   }
 
-  Future<bool> printReceipt(ReceiptData data) async {
+  Future<bool> printTest({String text = 'WalCash POS - Tès enprime'}) async {
     if (!await isConnected()) return false;
+    return PrintBluetoothThermal.writeBytes(await buildTestBytes(text: text));
+  }
 
+  /// Bati byte ESC/POS resi a SAN voye yo — konsa nenpòt transpò
+  /// (Bluetooth, USB, rezo, CUPS) ka sèvi ak menm resi a.
+  Future<List<int>> buildReceiptBytes(ReceiptData data) async {
     final profile = await CapabilityProfile.load();
     final paperSize = data.receiptWidth >= 576 ? PaperSize.mm80 : PaperSize.mm58;
     final gen = Generator(paperSize, profile);
@@ -365,6 +370,60 @@ class PrinterService {
     bytes.addAll(gen.feed(3));
     bytes.addAll(gen.cut());
 
-    return PrintBluetoothThermal.writeBytes(bytes);
+    return bytes;
+  }
+
+  /// Enprime resi sou Bluetooth (transpò defo pou telefòn).
+  Future<bool> printReceipt(ReceiptData data) async {
+    if (!await isConnected()) return false;
+    return PrintBluetoothThermal.writeBytes(await buildReceiptBytes(data));
+  }
+
+  // ─────────── Transpò pou NENPÒT enprimant (sitou desktop) ───────────
+
+  /// Ekri byte brit dirèk sou yon aparèy — egz. enprimant USB sou Linux
+  /// (`/dev/usb/lp0`). Se fason ki pi senp pou Epson TM-T20II USB la.
+  Future<bool> printBytesDevice(List<int> bytes, String devicePath) async {
+    try {
+      final raf = await File(devicePath).open(mode: FileMode.writeOnly);
+      await raf.writeFrom(bytes);
+      await raf.flush();
+      await raf.close();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Voye byte sou yon enprimant rezo (ESC/POS, pò 9100 pa defo).
+  Future<bool> printBytesNetwork(List<int> bytes, String host, int port) async {
+    try {
+      final socket = await Socket.connect(host, port, timeout: const Duration(seconds: 6));
+      socket.add(bytes);
+      await socket.flush();
+      await socket.close();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Voye byte brit sou yon enprimant SISTÈM via CUPS (`lp -o raw`).
+  /// Sa a mache pou NENPÒT enprimant ki enstale nan sistèm nan
+  /// (USB, rezo, elatriye). `printerName` vid = enprimant default la.
+  Future<bool> printBytesCups(List<int> bytes, {String? printerName}) async {
+    try {
+      final args = <String>['-o', 'raw'];
+      if (printerName != null && printerName.trim().isNotEmpty) {
+        args.insertAll(0, ['-d', printerName.trim()]);
+      }
+      final proc = await Process.start('lp', args);
+      proc.stdin.add(bytes);
+      await proc.stdin.flush();
+      await proc.stdin.close();
+      return (await proc.exitCode) == 0;
+    } catch (_) {
+      return false;
+    }
   }
 }

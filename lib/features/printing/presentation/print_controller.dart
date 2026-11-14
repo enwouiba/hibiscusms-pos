@@ -1,5 +1,8 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/printer_service.dart';
 import '../data/sunmi_printer_adapter.dart';
@@ -8,7 +11,10 @@ export '../data/printer_service.dart' show BluetoothPrinterDevice, ReceiptData, 
 
 enum PrinterMode {
   sunmiIntegrated('sunmi', 'SUNMI Entegre'),
-  bluetooth('bluetooth', 'Bluetooth ESC/POS');
+  bluetooth('bluetooth', 'Bluetooth ESC/POS'),
+  usb('usb', 'USB / Aparèy (ESC/POS)'),
+  network('network', 'Rezo (TCP 9100)'),
+  cups('cups', 'Sistèm / CUPS (lp)');
 
   final String code;
   final String label;
@@ -16,6 +22,19 @@ enum PrinterMode {
 
   static PrinterMode fromCode(String? c) =>
       PrinterMode.values.firstWhere((m) => m.code == c, orElse: () => PrinterMode.bluetooth);
+
+  /// Transpò desktop ki voye byte brit (pa Bluetooth, pa SUNMI).
+  bool get isDesktopTransport =>
+      this == PrinterMode.usb || this == PrinterMode.network || this == PrinterMode.cups;
+}
+
+/// Èske n ap kouri sou yon òdinatè (Linux/Windows/macOS)?
+bool get _isDesktop {
+  try {
+    return Platform.isLinux || Platform.isWindows || Platform.isMacOS;
+  } catch (_) {
+    return false;
+  }
 }
 
 class PrintState {
@@ -57,13 +76,39 @@ class PrintController extends Notifier<PrintState> {
   }
 
   Future<void> _detectSunmi() async {
-    final isSunmi = await SunmiPrinterAdapter.instance.isSunmiDevice();
-    state = state.copyWith(
-      isSunmiDetected: isSunmi,
-      mode: isSunmi ? PrinterMode.sunmiIntegrated : PrinterMode.bluetooth,
-    );
+    bool isSunmi = false;
+    try {
+      isSunmi = await SunmiPrinterAdapter.instance.isSunmiDevice();
+    } catch (_) {
+      isSunmi = false; // SUNMI se Android sèlman — sou desktop li pa la
+    }
+    // Defo entelijan: SUNMI machin → SUNMI; òdinatè → USB; telefòn → Bluetooth.
+    final defaultMode = isSunmi
+        ? PrinterMode.sunmiIntegrated
+        : (_isDesktop ? PrinterMode.usb : PrinterMode.bluetooth);
+    state = state.copyWith(isSunmiDetected: isSunmi, mode: defaultMode);
     if (isSunmi) {
       await SunmiPrinterAdapter.instance.bindPrinter();
+    }
+  }
+
+  /// Voye byte yo sou transpò desktop la selon mòd + konfigirasyon ki sove.
+  Future<bool> _sendDesktop(List<int> bytes) async {
+    final prefs = await SharedPreferences.getInstance();
+    final svc = PrinterService.instance;
+    switch (state.mode) {
+      case PrinterMode.usb:
+        final path = prefs.getString('printer_device_path') ?? '/dev/usb/lp0';
+        return svc.printBytesDevice(bytes, path);
+      case PrinterMode.network:
+        final host = prefs.getString('printer_host') ?? '';
+        final port = prefs.getInt('printer_port') ?? 9100;
+        if (host.trim().isEmpty) return false;
+        return svc.printBytesNetwork(bytes, host.trim(), port);
+      case PrinterMode.cups:
+        return svc.printBytesCups(bytes, printerName: prefs.getString('printer_cups_name'));
+      default:
+        return false;
     }
   }
 
@@ -115,6 +160,11 @@ class PrintController extends Notifier<PrintState> {
     if (state.mode == PrinterMode.sunmiIntegrated) {
       return SunmiPrinterAdapter.instance.printTest();
     }
+    // USB / Rezo / CUPS — voye byte brit, pa bezwen Bluetooth
+    if (state.mode.isDesktopTransport) {
+      final bytes = await PrinterService.instance.buildTestBytes();
+      return _sendDesktop(bytes);
+    }
     if (!await _ensurePermissions()) return false;
     final connected = await PrinterService.instance.isConnected();
     if (!connected) {
@@ -135,6 +185,17 @@ class PrintController extends Notifier<PrintState> {
         if (!ok) {
           state = state.copyWith(lastError: 'Pa kapab enprime sou SUNMI');
         }
+        return ok;
+      }
+
+      // USB / Rezo / CUPS — transpò desktop (byte brit)
+      if (state.mode.isDesktopTransport) {
+        final bytes = await PrinterService.instance.buildReceiptBytes(data);
+        final ok = await _sendDesktop(bytes);
+        state = state.copyWith(
+          isPrinting: false,
+          lastError: ok ? null : 'Pa kapab enprime (${state.mode.label}) — verifye konfigirasyon/pèmisyon',
+        );
         return ok;
       }
 
