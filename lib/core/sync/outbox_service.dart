@@ -97,7 +97,23 @@ class OutboxService {
       orderBy: 'id ASC',
       limit: limit,
     );
-    return rows.map(OutboxEntry.fromRow).toList();
+    // REZISTANS: yon sèl liy korwonpi (chan null, payload ki pa JSON valab)
+    // pa dwe fè `fromRow` lanse epi BLOKE tout push la. Nou sote move liy yo
+    // epi nou make yo (attempts++) pou yo pa retounen san rete.
+    final out = <OutboxEntry>[];
+    for (final r in rows) {
+      try {
+        out.add(OutboxEntry.fromRow(r));
+      } catch (_) {
+        try {
+          await db.rawUpdate(
+            'UPDATE sync_outbox SET attempts = attempts + 1, last_error = ? WHERE id = ?',
+            ['parse_error: liy move', r['id']],
+          );
+        } catch (_) {}
+      }
+    }
+    return out;
   }
 
   /// Reset konpteur eseye pou tout item ki nan outbox (rekipere apre bug sèvè).
