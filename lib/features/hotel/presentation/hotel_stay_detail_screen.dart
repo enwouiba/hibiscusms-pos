@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle, FilteringTextInputFormatter, TextInputFormatter;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/auth/token_store.dart';
@@ -146,6 +147,30 @@ class HotelStayDetailScreen extends ConsumerWidget {
     }
   }
 
+  Future<void> _deleteStay(BuildContext context, WidgetRef ref, HotelStay s) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Efase sejou'),
+        content: Text('Efase sejou #${s.stayNumber} nèt? Si chanm nan te okipe, l ap vin lib.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Non')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Efase'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await ref.read(hotelRepositoryProvider).deleteStay(s.id);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sejou efase')));
+      context.pop();
+    }
+  }
+
   Future<void> _validateProforma(BuildContext context, WidgetRef ref, HotelStay s) async {
     final ok = await showDialog<bool>(
       context: context,
@@ -272,7 +297,10 @@ class HotelStayDetailScreen extends ConsumerWidget {
           async.maybeWhen(
             data: (s) => s == null
                 ? const SizedBox.shrink()
-                : IconButton(icon: const Icon(Icons.print), tooltip: 'Enprime resi', onPressed: () => _printReceipt(context, ref, s)),
+                : Row(mainAxisSize: MainAxisSize.min, children: [
+                    IconButton(icon: const Icon(Icons.print), tooltip: 'Enprime resi', onPressed: () => _printReceipt(context, ref, s)),
+                    IconButton(icon: const Icon(Icons.delete_outline), tooltip: 'Efase sejou', onPressed: () => _deleteStay(context, ref, s)),
+                  ]),
             orElse: () => const SizedBox.shrink(),
           ),
         ],

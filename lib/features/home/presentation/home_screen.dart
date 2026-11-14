@@ -569,6 +569,7 @@ class _MenuGrid extends StatelessWidget {
         ? <_MenuItem>[
             _MenuItem('Chanm', Icons.hotel, '/hotel', primary: true),
             _MenuItem('Sejou yo', Icons.list_alt, '/hotel/stays'),
+            _MenuItem('Pofoma', Icons.description, '/hotel/proforma'),
             _MenuItem('Kliyan', Icons.people, '/customers'),
             _MenuItem('Kès', Icons.account_balance_wallet, '/cash-sessions'),
             if (canManage) _MenuItem('Rapò', Icons.bar_chart, '/hotel/reports'),

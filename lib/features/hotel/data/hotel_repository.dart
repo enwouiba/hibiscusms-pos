@@ -321,6 +321,43 @@ class HotelRepository {
     });
   }
 
+  /// Efase yon sejou (soft delete). Si l te aktif, libere chanm nan.
+  Future<void> deleteStay(String stayId) async {
+    final now = DateTime.now().toUtc();
+    final version = _hlc.next();
+    await _db.transaction((txn) async {
+      final rows = await txn.query('hotel_stays', where: 'id = ?', whereArgs: [stayId], limit: 1);
+      if (rows.isEmpty) return;
+      final roomId = rows.first['room_id'] as String?;
+      final active = (rows.first['status'] as String?) == 'active';
+      // Libere chanm nan si sejou a te aktif
+      if (roomId != null && active) {
+        final rv = _hlc.next();
+        final rrows = await txn.query('hotel_rooms', where: 'id = ?', whereArgs: [roomId], limit: 1);
+        if (rrows.isNotEmpty) {
+          final rm = Map<String, dynamic>.from(rrows.first);
+          rm['status'] = HotelRoomStatus.available.code;
+          rm['version'] = rv;
+          rm['updated_at'] = now.toIso8601String();
+          await txn.update('hotel_rooms', rm, where: 'id = ?', whereArgs: [roomId]);
+          await _outbox.enqueue(
+            txn: txn, tableName: 'hotel_rooms', rowId: roomId, op: 'update',
+            payload: rm, overrideVersion: rv,
+          );
+        }
+      }
+      await txn.update(
+        'hotel_stays',
+        {'deleted_at': now.toIso8601String(), 'updated_at': now.toIso8601String(), 'version': version},
+        where: 'id = ?', whereArgs: [stayId],
+      );
+      await _outbox.enqueue(
+        txn: txn, tableName: 'hotel_stays', rowId: stayId, op: 'delete',
+        payload: {'id': stayId}, overrideVersion: version,
+      );
+    });
+  }
+
   Future<List<HotelStay>> listStays(String storeId, {HotelStayStatus? status}) async {
     final where = StringBuffer('store_id = ? AND (deleted_at IS NULL)');
     final args = <Object?>[storeId];
