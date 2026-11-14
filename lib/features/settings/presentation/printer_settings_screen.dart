@@ -1,4 +1,4 @@
-import 'dart:io' show Platform, Process;
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -68,6 +68,13 @@ class PrinterSettingsScreen extends ConsumerWidget {
                       ),
                     ),
                   const SizedBox(height: 12),
+                  if (isWindowsDesktop)
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 4),
+                      child: Text('Sou Windows: resi/fakti enprime sou sistèm enprimant Windows la. Chwazi enprimant yo anba a.',
+                          style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    ),
+                  if (!isWindowsDesktop) ...[
                   RadioListTile<PrinterMode>(
                     title: const Text('SUNMI Entegre'),
                     subtitle: const Text('Imprimant ki nan tèt machin nan'),
@@ -111,6 +118,7 @@ class PrinterSettingsScreen extends ConsumerWidget {
                       contentPadding: EdgeInsets.zero,
                     ),
                   ],
+                  ],
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
@@ -137,22 +145,27 @@ class PrinterSettingsScreen extends ConsumerWidget {
             ),
           ),
 
-          // Bluetooth seksyon — sèlman si mòd bluetooth
-          if (state.mode == PrinterMode.bluetooth) ...[
+          // Seksyon konfigirasyon — pa sou Windows (Linux/Android sèlman)
+          if (!isWindowsDesktop && state.mode == PrinterMode.bluetooth) ...[
             const SizedBox(height: 16),
             _BluetoothSection(),
           ],
-          if (state.mode == PrinterMode.usb) ...[
+          if (!isWindowsDesktop && state.mode == PrinterMode.usb) ...[
             const SizedBox(height: 16),
             const _UsbSection(),
           ],
-          if (state.mode == PrinterMode.network) ...[
+          if (!isWindowsDesktop && state.mode == PrinterMode.network) ...[
             const SizedBox(height: 16),
             const _NetworkSection(),
           ],
-          if (state.mode == PrinterMode.cups) ...[
+          if (!isWindowsDesktop && state.mode == PrinterMode.cups) ...[
             const SizedBox(height: 16),
             const _CupsSection(),
+          ],
+          // Windows: enprimant resi (tèmik)
+          if (isWindowsDesktop) ...[
+            const SizedBox(height: 16),
+            const _WinThermalSection(),
           ],
           // 2èm enprimant A4 (fakti nwit otèl) — toujou montre sou desktop
           if (_isDesktop) ...[
@@ -367,8 +380,99 @@ class _NetworkSectionState extends State<_NetworkSection> {
   }
 }
 
+/// Windows: enprimant RESI (tèmik). Resi/moman enprime isit la via motè
+/// `printing`. Pref `printer_win_thermal`.
+class _WinThermalSection extends StatefulWidget {
+  const _WinThermalSection();
+  @override
+  State<_WinThermalSection> createState() => _WinThermalSectionState();
+}
+
+class _WinThermalSectionState extends State<_WinThermalSection> {
+  final _ctrl = TextEditingController();
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((p) {
+      if (!mounted) return;
+      setState(() {
+        _ctrl.text = p.getString('printer_win_thermal') ?? '';
+        _loaded = true;
+      });
+    });
+  }
+
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  Future<void> _save() async {
+    final p = await SharedPreferences.getInstance();
+    await p.setString('printer_win_thermal', _ctrl.text.trim());
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enprimant resi sove')));
+    }
+  }
+
+  Future<void> _list() async {
+    final printers = await PrinterService.instance.listSystemPrinters();
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Enprimant yo'),
+        content: printers.isEmpty
+            ? const Text('Pa gen enprimant jwenn.')
+            : SizedBox(
+                width: double.maxFinite,
+                child: ListView(
+                  shrinkWrap: true,
+                  children: printers
+                      .map((p) => ListTile(
+                            dense: true,
+                            leading: const Icon(Icons.print, size: 18),
+                            title: Text(p),
+                            onTap: () { _ctrl.text = p; Navigator.pop(ctx); },
+                          ))
+                      .toList(),
+                ),
+              ),
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Fèmen'))],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_loaded) return const SizedBox.shrink();
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Enprimant Resi (tèmik)', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          const Text('Resi moman/vant enprime sou enprimant sa a. Chwazi enprimant tèmik ou (egz. Epson TM-T20II) nan lis Windows la.',
+              style: TextStyle(fontSize: 12, color: Colors.grey)),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _ctrl,
+            decoration: const InputDecoration(labelText: 'Non enprimant resi', border: OutlineInputBorder()),
+          ),
+          const SizedBox(height: 10),
+          Row(children: [
+            Expanded(child: OutlinedButton.icon(icon: const Icon(Icons.search), label: const Text('Gade enprimant yo'), onPressed: _list)),
+            const SizedBox(width: 10),
+            Expanded(child: FilledButton.icon(icon: const Icon(Icons.save), label: const Text('Sove'), onPressed: _save)),
+          ]),
+        ]),
+      ),
+    );
+  }
+}
+
 /// 2èm enprimant: fakti A4 (PDF) pou resi NWIT otèl yo. Separe de enprimant
-/// tèmik la (moman → Epson). Itilize CUPS (`lp`).
+/// tèmik la (moman → Epson). Itilize CUPS (`lp`) sou Linux, `printing` sou Windows.
 class _A4Section extends StatefulWidget {
   const _A4Section();
   @override
@@ -403,21 +507,32 @@ class _A4SectionState extends State<_A4Section> {
   }
 
   Future<void> _listPrinters() async {
-    String out;
-    try {
-      final r = await Process.run('lpstat', ['-p', '-d']);
-      out = (r.stdout as String).trim();
-      if (out.isEmpty) out = (r.stderr as String).trim();
-      if (out.isEmpty) out = 'Pa gen enprimant nan CUPS. Ajoute youn (lè CUPS aktif).';
-    } catch (e) {
-      out = 'CUPS/lpstat pa disponib: $e';
-    }
+    // Motè `printing` — mache sou Windows ak Linux
+    final printers = await PrinterService.instance.listSystemPrinters();
     if (!mounted) return;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Enprimant sistèm (CUPS)'),
-        content: SingleChildScrollView(child: SelectableText(out, style: const TextStyle(fontSize: 12))),
+        title: const Text('Enprimant yo'),
+        content: printers.isEmpty
+            ? const Text('Pa gen enprimant jwenn. Verifye enprimant lan enstale nan sistèm nan.')
+            : SizedBox(
+                width: double.maxFinite,
+                child: ListView(
+                  shrinkWrap: true,
+                  children: printers
+                      .map((p) => ListTile(
+                            dense: true,
+                            leading: const Icon(Icons.print, size: 18),
+                            title: Text(p),
+                            onTap: () {
+                              _ctrl.text = p;
+                              Navigator.pop(ctx);
+                            },
+                          ))
+                      .toList(),
+                ),
+              ),
         actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Fèmen'))],
       ),
     );

@@ -25,6 +25,11 @@ class HotelStayDetailScreen extends ConsumerWidget {
 
   String _pick(String? v, String fb) => (v != null && v.trim().isNotEmpty) ? v.trim() : fb;
 
+  /// Etikèt bouton enprime a — montre Pofoma/Fakti pou sejou nwit.
+  String _printLabel(HotelStay s) => s.mode == HotelRentalMode.nightly
+      ? (s.proformaValidated ? 'Enprime Fakti (A4)' : 'Enprime Pofoma (A4)')
+      : 'Enprime resi';
+
   static String _dt(DateTime d) {
     final l = d.toLocal();
     return '${l.day.toString().padLeft(2, '0')}/${l.month.toString().padLeft(2, '0')} '
@@ -204,7 +209,10 @@ class HotelStayDetailScreen extends ConsumerWidget {
         isProforma: !s.proformaValidated, // POFOMA toutan li poko valide
       ));
       final a4Name = prefs.getString('printer_a4_name');
-      final ok = await PrinterService.instance.printPdfCups(pdfBytes, printerName: a4Name);
+      // Windows: motè `printing`; Linux/Mac: CUPS `lp`.
+      final ok = isWindowsDesktop
+          ? await PrinterService.instance.printPdfViaPrinting(pdfBytes, printerName: a4Name)
+          : await PrinterService.instance.printPdfCups(pdfBytes, printerName: a4Name);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(ok
@@ -326,12 +334,12 @@ class HotelStayDetailScreen extends ConsumerWidget {
                 Row(children: [
                   Expanded(child: OutlinedButton.icon(icon: const Icon(Icons.payments), label: const Text('Ajoute peman'), onPressed: () => _addPayment(context, ref, s))),
                   const SizedBox(width: 10),
-                  Expanded(child: OutlinedButton.icon(icon: const Icon(Icons.print), label: const Text('Enprime resi'), onPressed: () => _printReceipt(context, ref, s))),
+                  Expanded(child: OutlinedButton.icon(icon: const Icon(Icons.print), label: Text(_printLabel(s)), onPressed: () => _printReceipt(context, ref, s))),
                 ]),
               ] else
                 SizedBox(
                   width: double.infinity,
-                  child: OutlinedButton.icon(icon: const Icon(Icons.print), label: const Text('Enprime resi'), onPressed: () => _printReceipt(context, ref, s)),
+                  child: OutlinedButton.icon(icon: const Icon(Icons.print), label: Text(_printLabel(s)), onPressed: () => _printReceipt(context, ref, s)),
                 ),
               // Pofoma → Fakti (sejou nwit sèlman)
               if (s.mode == HotelRentalMode.nightly && !s.proformaValidated) ...[

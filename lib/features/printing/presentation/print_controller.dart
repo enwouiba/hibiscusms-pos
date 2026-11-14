@@ -5,6 +5,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/printer_service.dart';
+import '../data/receipt_pdf.dart';
 import '../data/sunmi_printer_adapter.dart';
 
 export '../data/printer_service.dart' show BluetoothPrinterDevice, ReceiptData, ReceiptItem;
@@ -32,6 +33,15 @@ enum PrinterMode {
 bool get _isDesktop {
   try {
     return Platform.isLinux || Platform.isWindows || Platform.isMacOS;
+  } catch (_) {
+    return false;
+  }
+}
+
+/// Windows: pa gen /dev ni CUPS `lp` — se motè `printing` nou itilize.
+bool get isWindowsDesktop {
+  try {
+    return Platform.isWindows;
   } catch (_) {
     return false;
   }
@@ -157,6 +167,22 @@ class PrintController extends Notifier<PrintState> {
   }
 
   Future<bool> testPrint({String? savedAddress}) async {
+    // Windows: tès via motè `printing`
+    if (isWindowsDesktop) {
+      final prefs = await SharedPreferences.getInstance();
+      final pdfBytes = await ReceiptPdf.build(ReceiptData(
+        saleNumber: 0,
+        createdAt: DateTime.now(),
+        items: const [],
+        subtotal: 0, discount: 0, tax: 0, total: 0,
+        paymentMethodLabel: 'Kach',
+        businessName: 'HibiscusMS',
+        ticketTitle: 'TES ENPRIME',
+        footerText: 'Enprimant resi OK',
+      ));
+      return PrinterService.instance.printPdfViaPrinting(
+          pdfBytes, printerName: prefs.getString('printer_win_thermal'));
+    }
     if (state.mode == PrinterMode.sunmiIntegrated) {
       return SunmiPrinterAdapter.instance.printTest();
     }
@@ -178,6 +204,20 @@ class PrintController extends Notifier<PrintState> {
   Future<bool> printReceipt(ReceiptData data, {String? savedAddress}) async {
     state = state.copyWith(isPrinting: true, clearError: true);
     try {
+      // Windows: rann resi a kòm PDF epi enprime via motè `printing`
+      // (pa gen /dev/usb ni CUPS `lp` sou Windows).
+      if (isWindowsDesktop) {
+        final prefs = await SharedPreferences.getInstance();
+        final pdfBytes = await ReceiptPdf.build(data);
+        final ok = await PrinterService.instance.printPdfViaPrinting(
+            pdfBytes, printerName: prefs.getString('printer_win_thermal'));
+        state = state.copyWith(
+          isPrinting: false,
+          lastError: ok ? null : 'Pa kapab enprime (Windows) — chwazi enprimant resi a nan Paramèt',
+        );
+        return ok;
+      }
+
       // SUNMI: imprimant entegre — pa bezwen Bluetooth
       if (state.mode == PrinterMode.sunmiIntegrated) {
         final ok = await SunmiPrinterAdapter.instance.printReceipt(data);

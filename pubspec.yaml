@@ -45,6 +45,8 @@ dependencies:
   sunmi_printer_plus: ^3.0.0
   # Fakti A4 (PDF) pou resi nwit otèl sou enprimant regilye
   pdf: ^3.11.1
+  # Motè enprime milti-platfòm (Windows + Linux + macOS): lis enprimant + enprime PDF
+  printing: ^5.13.2
   device_info_plus: ^11.2.0
 
   # Permissions

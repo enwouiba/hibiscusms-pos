@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:esc_pos_utils_plus/esc_pos_utils_plus.dart';
 import 'package:image/image.dart' as img;
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
+import 'package:printing/printing.dart';
 
 class BluetoothPrinterDevice {
   const BluetoothPrinterDevice({required this.name, required this.address});
@@ -432,6 +433,42 @@ class PrinterService {
       await proc.stdin.flush();
       await proc.stdin.close();
       return (await proc.exitCode) == 0;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ───────── Motè `printing` milti-platfòm (Windows + Linux + macOS) ─────────
+
+  /// Lis non enprimant ki enstale nan sistèm nan (mache sou Windows tou).
+  Future<List<String>> listSystemPrinters() async {
+    try {
+      final printers = await Printing.listPrinters();
+      return printers.map((p) => p.name).where((n) => n.trim().isNotEmpty).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Voye yon PDF sou yon enprimant sistèm via motè `printing` an. Si
+  /// `printerName` vid oswa pa jwenn, li itilize enprimant default la.
+  Future<bool> printPdfViaPrinting(List<int> pdfBytes, {String? printerName}) async {
+    try {
+      final bytes = Uint8List.fromList(pdfBytes);
+      final printers = await Printing.listPrinters();
+      Printer? target;
+      if (printerName != null && printerName.trim().isNotEmpty) {
+        for (final p in printers) {
+          if (p.name.trim().toLowerCase() == printerName.trim().toLowerCase()) {
+            target = p;
+            break;
+          }
+        }
+      }
+      target ??= printers.where((p) => p.isDefault).cast<Printer?>().firstWhere((_) => true, orElse: () => null);
+      target ??= printers.isNotEmpty ? printers.first : null;
+      if (target == null) return false;
+      return await Printing.directPrintPdf(printer: target, onLayout: (_) async => bytes);
     } catch (_) {
       return false;
     }

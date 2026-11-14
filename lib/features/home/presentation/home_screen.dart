@@ -159,17 +159,28 @@ final _lifetimeSalesProvider = FutureProvider.autoDispose<_LifetimeTotals>((ref)
       AND (deleted_at IS NULL OR deleted_at = '')
   ''', [storeId]);
 
+  // 5) Revni OTÈL + DRY CLEANING (tablo apa — pa nan `sales`). Pou yon
+  //    magazen hotel/dryclean, se la kòb la ye. Pou retail yo = 0.
+  final extraRow = await db.rawQuery('''
+    SELECT
+      (SELECT COALESCE(SUM(amount_paid),0) FROM hotel_stays WHERE store_id=? AND deleted_at IS NULL)
+      + (SELECT COALESCE(SUM(amount_paid),0) FROM dryclean_orders WHERE store_id=? AND deleted_at IS NULL) AS extra_received,
+      (SELECT COALESCE(SUM(total-amount_paid),0) FROM hotel_stays WHERE store_id=? AND deleted_at IS NULL AND status='active')
+      + (SELECT COALESCE(SUM(total-amount_paid),0) FROM dryclean_orders WHERE store_id=? AND deleted_at IS NULL AND status != 'completed') AS extra_debt
+  ''', [storeId, storeId, storeId, storeId]);
+
   final received = (salesRow.first['received'] as num?)?.toDouble() ?? 0;
-  final gross = (salesRow.first['gross'] as num?)?.toDouble() ?? 0;
   final paidDebt = (paymentsRow.first['paid_debt'] as num?)?.toDouble() ?? 0;
   final actualDebt = (debtNowRow.first['total_debt'] as num?)?.toDouble() ?? 0;
+  final extraReceived = (extraRow.first['extra_received'] as num?)?.toDouble() ?? 0;
+  final extraDebt = (extraRow.first['extra_debt'] as num?)?.toDouble() ?? 0;
   final netAdj = (adjRow.first['net_add'] as num).toDouble() - (adjRow.first['net_sub'] as num).toDouble();
   final creditAdj = (adjRow.first['credit_add'] as num).toDouble() - (adjRow.first['credit_sub'] as num).toDouble();
 
-  // NÈT = kob ki REYÈLMAN antre + ajisteman
-  final net = received + paidDebt + netAdj;
-  // KREDIT = dèt aktyèl + ajisteman
-  final credit = (actualDebt + creditAdj).clamp(0, double.infinity).toDouble();
+  // NÈT = kob ki REYÈLMAN antre (sales + otèl + dry) + ajisteman
+  final net = received + extraReceived + paidDebt + netAdj;
+  // KREDIT = dèt aktyèl (kliyan + otèl/dry ki pa fin peye) + ajisteman
+  final credit = (actualDebt + extraDebt + creditAdj).clamp(0, double.infinity).toDouble();
   // BRUT = NET + KREDIT (invaryan)
   return _LifetimeTotals(net: net, credit: credit, gross: net + credit);
 });
@@ -792,9 +803,21 @@ final _homeStatsProvider = FutureProvider.autoDispose<HomeStats>((ref) async {
       AND created_at >= ?
       AND created_at <= ?
   ''', [storeId, startOfDay, endOfDay]);
+  // Revni + kont otèl/dry jodi a (tablo apa)
+  final extraTodayRow = await db.rawQuery('''
+    SELECT
+      (SELECT COALESCE(SUM(amount_paid),0) FROM hotel_stays WHERE store_id=? AND deleted_at IS NULL AND created_at>=? AND created_at<=?)
+      + (SELECT COALESCE(SUM(amount_paid),0) FROM dryclean_orders WHERE store_id=? AND deleted_at IS NULL AND created_at>=? AND created_at<=?) AS extra_rev,
+      (SELECT COUNT(*) FROM hotel_stays WHERE store_id=? AND deleted_at IS NULL AND created_at>=? AND created_at<=?)
+      + (SELECT COUNT(*) FROM dryclean_orders WHERE store_id=? AND deleted_at IS NULL AND created_at>=? AND created_at<=?) AS extra_cnt
+  ''', [storeId, startOfDay, endOfDay, storeId, startOfDay, endOfDay,
+        storeId, startOfDay, endOfDay, storeId, startOfDay, endOfDay]);
+  final extraRevToday = (extraTodayRow.first['extra_rev'] as num?)?.toDouble() ?? 0;
+  final extraCntToday = ((extraTodayRow.first['extra_cnt'] as num?) ?? 0).toInt();
+
   final debtPaidToday = (debtPaymentsRow.first['paid'] as num?)?.toDouble() ?? 0;
   final rawRevenue = (salesRow.first['revenue'] as num?)?.toDouble() ?? 0;
-  final totalToday = rawRevenue + debtPaidToday;
+  final totalToday = rawRevenue + debtPaidToday + extraRevToday;
 
   // Stock ba — SÈLMAN pwodwi magazen aktif la (oswa pataje ak store_id NULL).
   final lowStockRow = await db.rawQuery('''
@@ -811,7 +834,7 @@ final _homeStatsProvider = FutureProvider.autoDispose<HomeStats>((ref) async {
 
   return HomeStats(
     todayRevenue: totalToday,
-    todayCount: ((salesRow.first['cnt'] as num?) ?? 0).toInt(),
+    todayCount: ((salesRow.first['cnt'] as num?) ?? 0).toInt() + extraCntToday,
     lowStockCount: ((lowStockRow.first['cnt'] as num?) ?? 0).toInt(),
     pendingSyncCount: ((pendingRow.first['cnt'] as num?) ?? 0).toInt(),
   );
