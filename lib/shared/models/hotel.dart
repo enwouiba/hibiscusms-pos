@@ -74,6 +74,11 @@ class HotelRoom {
 
   bool get isAvailable => status == HotelRoomStatus.available;
 
+  /// Chanm « Moman » (lwaye pa èdtan/moman) kont chanm « Nwit ».
+  /// Make eksplisit pa `room_type`, oswa dedwi: sèlman pri/èdtan = Moman.
+  bool get isMoman =>
+      roomType == 'Moman' || (pricePerNight <= 0 && pricePerHour > 0);
+
   factory HotelRoom.fromMap(Map<String, dynamic> m) => HotelRoom(
         id: m['id'] as String,
         storeId: m['store_id'] as String,
