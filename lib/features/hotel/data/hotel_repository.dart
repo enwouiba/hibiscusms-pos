@@ -197,6 +197,7 @@ class HotelRepository {
       'total': total,
       'amount_paid': deposit,
       'notes': notes,
+      'proforma_validated': 0,
       'version': version,
       'created_at': now.toIso8601String(),
       'updated_at': now.toIso8601String(),
@@ -291,6 +292,25 @@ class HotelRepository {
       final map = Map<String, dynamic>.from(rows.first);
       final paid = ((map['amount_paid'] as num?)?.toDouble() ?? 0) + amount;
       map['amount_paid'] = paid;
+      map['version'] = version;
+      map['updated_at'] = now.toIso8601String();
+      await txn.update('hotel_stays', map, where: 'id = ?', whereArgs: [stayId]);
+      await _outbox.enqueue(
+        txn: txn, tableName: 'hotel_stays', rowId: stayId, op: 'update',
+        payload: map, overrideVersion: version,
+      );
+    });
+  }
+
+  /// Valide pofoma a → li vin yon fakti ofisyèl.
+  Future<void> validateProforma(String stayId) async {
+    final now = DateTime.now().toUtc();
+    final version = _hlc.next();
+    await _db.transaction((txn) async {
+      final rows = await txn.query('hotel_stays', where: 'id = ?', whereArgs: [stayId], limit: 1);
+      if (rows.isEmpty) return;
+      final map = Map<String, dynamic>.from(rows.first);
+      map['proforma_validated'] = 1;
       map['version'] = version;
       map['updated_at'] = now.toIso8601String();
       await txn.update('hotel_stays', map, where: 'id = ?', whereArgs: [stayId]);

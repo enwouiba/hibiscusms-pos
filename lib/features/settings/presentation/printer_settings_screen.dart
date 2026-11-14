@@ -1,4 +1,4 @@
-import 'dart:io' show Platform;
+import 'dart:io' show Platform, Process;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -153,6 +153,11 @@ class PrinterSettingsScreen extends ConsumerWidget {
           if (state.mode == PrinterMode.cups) ...[
             const SizedBox(height: 16),
             const _CupsSection(),
+          ],
+          // 2èm enprimant A4 (fakti nwit otèl) — toujou montre sou desktop
+          if (_isDesktop) ...[
+            const SizedBox(height: 16),
+            const _A4Section(),
           ],
 
           if (state.lastError != null) ...[
@@ -356,6 +361,96 @@ class _NetworkSectionState extends State<_NetworkSection> {
           ]),
           const SizedBox(height: 10),
           SizedBox(width: double.infinity, child: FilledButton.icon(icon: const Icon(Icons.save), label: const Text('Sove'), onPressed: _save)),
+        ]),
+      ),
+    );
+  }
+}
+
+/// 2èm enprimant: fakti A4 (PDF) pou resi NWIT otèl yo. Separe de enprimant
+/// tèmik la (moman → Epson). Itilize CUPS (`lp`).
+class _A4Section extends StatefulWidget {
+  const _A4Section();
+  @override
+  State<_A4Section> createState() => _A4SectionState();
+}
+
+class _A4SectionState extends State<_A4Section> {
+  final _ctrl = TextEditingController();
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((p) {
+      if (!mounted) return;
+      setState(() {
+        _ctrl.text = p.getString('printer_a4_name') ?? '';
+        _loaded = true;
+      });
+    });
+  }
+
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  Future<void> _save() async {
+    final p = await SharedPreferences.getInstance();
+    await p.setString('printer_a4_name', _ctrl.text.trim());
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enprimant A4 sove')));
+    }
+  }
+
+  Future<void> _listPrinters() async {
+    String out;
+    try {
+      final r = await Process.run('lpstat', ['-p', '-d']);
+      out = (r.stdout as String).trim();
+      if (out.isEmpty) out = (r.stderr as String).trim();
+      if (out.isEmpty) out = 'Pa gen enprimant nan CUPS. Ajoute youn (lè CUPS aktif).';
+    } catch (e) {
+      out = 'CUPS/lpstat pa disponib: $e';
+    }
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Enprimant sistèm (CUPS)'),
+        content: SingleChildScrollView(child: SelectableText(out, style: const TextStyle(fontSize: 12))),
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Fèmen'))],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_loaded) return const SizedBox.shrink();
+    return Card(
+      color: Colors.indigo.withValues(alpha: 0.06),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: const [
+            Icon(Icons.description, size: 18),
+            SizedBox(width: 6),
+            Text('Enprimant A4 — Fakti Nwit (Otèl)', style: TextStyle(fontWeight: FontWeight.bold)),
+          ]),
+          const SizedBox(height: 4),
+          const Text('Resi sejou NWIT yo ap enprime kòm fakti A4 sou enprimant sa a '
+              '(moman yo rete sou enprimant tèmik la). Mete non enprimant CUPS la.',
+              style: TextStyle(fontSize: 12, color: Colors.grey)),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _ctrl,
+            decoration: const InputDecoration(labelText: 'Non enprimant A4 (CUPS)', border: OutlineInputBorder(), hintText: 'HP_LaserJet'),
+          ),
+          const SizedBox(height: 10),
+          Row(children: [
+            Expanded(child: OutlinedButton.icon(icon: const Icon(Icons.search), label: const Text('Gade enprimant yo'), onPressed: _listPrinters)),
+            const SizedBox(width: 10),
+            Expanded(child: FilledButton.icon(icon: const Icon(Icons.save), label: const Text('Sove'), onPressed: _save)),
+          ]),
         ]),
       ),
     );

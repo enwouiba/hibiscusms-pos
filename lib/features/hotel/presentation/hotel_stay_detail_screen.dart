@@ -10,6 +10,8 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/money_formatter.dart';
 import '../../../shared/models/hotel.dart';
 import '../../business/data/store_repository.dart';
+import '../../printing/data/invoice_pdf.dart';
+import '../../printing/data/printer_service.dart';
 import '../../printing/presentation/print_controller.dart';
 import '../data/hotel_repository.dart';
 
@@ -139,6 +141,28 @@ class HotelStayDetailScreen extends ConsumerWidget {
     }
   }
 
+  Future<void> _validateProforma(BuildContext context, WidgetRef ref, HotelStay s) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Valide pofoma'),
+        content: const Text('Kliyan an aksepte? Pofoma a ap vin yon FAKTI ofisyèl.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Non')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Wi, valide')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await ref.read(hotelRepositoryProvider).validateProforma(s.id);
+    ref.invalidate(_stayProvider(s.id));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pofoma valide → Fakti. Ou ka enprime fakti a kounye a.')),
+      );
+    }
+  }
+
   Future<void> _printReceipt(BuildContext context, WidgetRef ref, HotelStay s) async {
     final prefs = await SharedPreferences.getInstance();
     final printerAddr = prefs.getString('printer_address');
@@ -149,12 +173,54 @@ class HotelStayDetailScreen extends ConsumerWidget {
         .then((b) => b.buffer.asUint8List())
         .catchError((_) => Uint8List(0));
 
+    // Woutaj otomatik: sejou NWIT -> fakti A4 (PDF) sou enprimant A4;
+    // sejou MOMAN -> resi tèmik sou Epson (ESC/POS).
+    if (s.mode == HotelRentalMode.nightly) {
+      final pdfBytes = await InvoicePdf.build(InvoiceData(
+        businessName: _pick(store?.name, AppConstants.receiptBusinessName),
+        businessAddress: _pick(store?.address, AppConstants.receiptBusinessAddress),
+        businessPhone: _pick(store?.phone, AppConstants.receiptBusinessPhone),
+        businessNif: _pick(store?.nif, AppConstants.receiptBusinessNif),
+        businessEmail: _pick(store?.email, AppConstants.receiptBusinessEmail),
+        logoBytes: logo.isNotEmpty ? logo : null,
+        number: s.stayNumber,
+        createdAt: s.createdAt,
+        checkOutAt: s.checkOutAt,
+        guestName: s.guestName,
+        guestPhone: s.guestPhone,
+        guestIdDoc: s.guestIdDoc,
+        roomName: s.roomNameSnapshot,
+        modeLabel: s.mode.label,
+        unitLabel: s.mode.unit,
+        duration: s.duration,
+        rate: s.rate,
+        roomCharge: s.roomCharge,
+        extra: s.extra,
+        discount: s.discount,
+        total: s.total,
+        amountPaid: s.amountPaid,
+        amountDue: s.amountDue,
+        footerText: 'Mèsi pou vizit ou!',
+        isProforma: !s.proformaValidated, // POFOMA toutan li poko valide
+      ));
+      final a4Name = prefs.getString('printer_a4_name');
+      final ok = await PrinterService.instance.printPdfCups(pdfBytes, printerName: a4Name);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(ok
+            ? 'Fakti A4 voye sou enprimant A4 la.'
+            : 'Pa kapab enprime A4 — verifye CUPS / enprimant A4 nan Paramèt.'),
+      ));
+      return;
+    }
+
     final data = ReceiptData(
+      receiptWidth: 576, // 80mm — menm lajè ak Epson TM-T20II (kolòn aliyen, pi konpak)
       saleNumber: s.stayNumber,
       createdAt: s.createdAt,
       items: [
         ReceiptItem(
-          name: '${s.roomNameSnapshot} (${s.mode.label}, ${s.duration} ${s.mode.unit})',
+          name: '${s.roomNameSnapshot} · ${s.mode.unit}',
           quantity: s.duration.toDouble(),
           subtotal: s.roomCharge,
         ),
@@ -221,6 +287,13 @@ class HotelStayDetailScreen extends ConsumerWidget {
                     ]),
                     Text('🚪 ${s.roomNameSnapshot}', style: const TextStyle(fontSize: 16)),
                     Text('${s.mode.emoji} ${s.mode.label} · ${s.duration} ${s.mode.unit}'),
+                    if (s.mode == HotelRentalMode.nightly)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 3),
+                        child: s.proformaValidated
+                            ? const Text('🧾 Fakti valide', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold))
+                            : const Text('📄 Pofoma (devi) — poko valide', style: TextStyle(color: Colors.deepOrange, fontWeight: FontWeight.bold)),
+                      ),
                     if (s.guestName?.isNotEmpty == true) Text('👤 ${s.guestName}'),
                     if (s.guestPhone?.isNotEmpty == true) Text('📞 ${s.guestPhone}'),
                     if (s.guestIdDoc?.isNotEmpty == true) Text('🪪 NIF/CIN: ${s.guestIdDoc}'),
@@ -260,6 +333,19 @@ class HotelStayDetailScreen extends ConsumerWidget {
                   width: double.infinity,
                   child: OutlinedButton.icon(icon: const Icon(Icons.print), label: const Text('Enprime resi'), onPressed: () => _printReceipt(context, ref, s)),
                 ),
+              // Pofoma → Fakti (sejou nwit sèlman)
+              if (s.mode == HotelRentalMode.nightly && !s.proformaValidated) ...[
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(backgroundColor: Colors.green),
+                    icon: const Icon(Icons.verified),
+                    label: const Text('Valide pofoma → Fakti'),
+                    onPressed: () => _validateProforma(context, ref, s),
+                  ),
+                ),
+              ],
             ],
           );
         },

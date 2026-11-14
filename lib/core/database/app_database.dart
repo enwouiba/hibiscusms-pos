@@ -583,6 +583,7 @@ class AppDatabase {
         total REAL NOT NULL DEFAULT 0,
         amount_paid REAL NOT NULL DEFAULT 0,
         notes TEXT,
+        proforma_validated INTEGER NOT NULL DEFAULT 0,
         version TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
@@ -713,6 +714,13 @@ class AppDatabase {
       // v11: NIF/CIN kliyan sou sejou otèl
       try {
         await db.execute('ALTER TABLE hotel_stays ADD COLUMN guest_id_doc TEXT');
+      } catch (_) {}
+    }
+
+    if (oldVersion < 12) {
+      // v12: pofoma valide (devi -> fakti) pou sejou otèl
+      try {
+        await db.execute('ALTER TABLE hotel_stays ADD COLUMN proforma_validated INTEGER NOT NULL DEFAULT 0');
       } catch (_) {}
     }
   }

@@ -114,6 +114,7 @@ class HotelStay {
   final double total;
   final double amountPaid;
   final String? notes;
+  final bool proformaValidated; // false = pofoma (devi), true = fakti
   final DateTime createdAt;
 
   const HotelStay({
@@ -138,6 +139,7 @@ class HotelStay {
     required this.total,
     this.amountPaid = 0,
     this.notes,
+    this.proformaValidated = false,
     required this.createdAt,
   });
 
@@ -173,6 +175,7 @@ class HotelStay {
         total: (m['total'] as num?)?.toDouble() ?? 0,
         amountPaid: (m['amount_paid'] as num?)?.toDouble() ?? 0,
         notes: m['notes'] as String?,
+        proformaValidated: ((m['proforma_validated'] as num?)?.toInt() ?? 0) == 1,
         createdAt: DateTime.parse(m['created_at'] as String),
       );
 }

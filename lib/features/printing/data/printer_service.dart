@@ -377,7 +377,7 @@ class PrinterService {
       styles: const PosStyles(align: PosAlign.center),
     ));
 
-    bytes.addAll(gen.feed(3));
+    bytes.addAll(gen.feed(2));
     bytes.addAll(gen.cut());
 
     return bytes;
@@ -432,6 +432,27 @@ class PrinterService {
       await proc.stdin.flush();
       await proc.stdin.close();
       return (await proc.exitCode) == 0;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Enprime yon PDF (fakti A4) sou yon enprimant sistèm via CUPS.
+  /// Pou resi NWIT otèl yo sou yon enprimant papye A4 regilye.
+  /// `printerName` vid = enprimant default la.
+  Future<bool> printPdfCups(List<int> pdfBytes, {String? printerName}) async {
+    try {
+      final tmp = File('${Directory.systemTemp.path}/hibiscus_fakti_${DateTime.now().millisecondsSinceEpoch}.pdf');
+      await tmp.writeAsBytes(pdfBytes, flush: true);
+      final args = <String>[];
+      if (printerName != null && printerName.trim().isNotEmpty) {
+        args.addAll(['-d', printerName.trim()]);
+      }
+      args.add(tmp.path);
+      final proc = await Process.run('lp', args);
+      // lp kopye fichye a nan spool la, donk nou ka efase l kounye a.
+      try { await tmp.delete(); } catch (_) {}
+      return proc.exitCode == 0;
     } catch (_) {
       return false;
     }
