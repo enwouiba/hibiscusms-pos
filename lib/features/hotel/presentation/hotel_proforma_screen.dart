@@ -58,6 +58,9 @@ class _HotelProformaScreenState extends ConsumerState<HotelProformaScreen> {
   double _pendingRate(HotelRoom r) =>
       _pendingMode == HotelRentalMode.hourly ? r.pricePerHour : r.pricePerNight;
 
+  // Moman (èdtan) avanse pa 2 (chif pè, min 2); nwit pa 1.
+  int get _pendingStep => _pendingMode == HotelRentalMode.hourly ? 2 : 1;
+
   void _addRoom() {
     final r = _pendingRoom;
     if (r == null) return;
@@ -153,7 +156,7 @@ class _HotelProformaScreenState extends ConsumerState<HotelProformaScreen> {
                     dense: true,
                     leading: Text(_items[i].mode.emoji, style: const TextStyle(fontSize: 20)),
                     title: Text('Chanm ${_items[i].roomName}'),
-                    subtitle: Text('${_items[i].duration} ${_items[i].mode.unit} × ${MoneyFormatter.format(_items[i].rate)}'),
+                    subtitle: Text('${hotelQtyLabel(_items[i].mode, _items[i].duration)} × ${MoneyFormatter.format(_items[i].rate)}'),
                     trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                       Text(MoneyFormatter.format(_items[i].lineTotal), style: const TextStyle(fontWeight: FontWeight.bold)),
                       IconButton(icon: const Icon(Icons.close, size: 18), onPressed: () => setState(() => _items.removeAt(i))),
@@ -182,14 +185,18 @@ class _HotelProformaScreenState extends ConsumerState<HotelProformaScreen> {
                         ButtonSegment(value: HotelRentalMode.hourly, label: Text('⏱️ Pa èdtan')),
                       ],
                       selected: {_pendingMode},
-                      onSelectionChanged: (s) => setState(() { _pendingMode = s.first; _pendingDuration = 1; }),
+                      onSelectionChanged: (s) => setState(() {
+                        _pendingMode = s.first;
+                        // Moman (èdtan): minimòm 2h, chif pè. Nwit: 1.
+                        _pendingDuration = s.first == HotelRentalMode.hourly ? 2 : 1;
+                      }),
                     ),
                     const SizedBox(height: 8),
                     Row(children: [
                       const Text('Dire: ', style: TextStyle(fontWeight: FontWeight.bold)),
-                      IconButton.filledTonal(icon: const Icon(Icons.remove), onPressed: _pendingDuration > 1 ? () => setState(() => _pendingDuration--) : null),
+                      IconButton.filledTonal(icon: const Icon(Icons.remove), onPressed: _pendingDuration > _pendingStep ? () => setState(() => _pendingDuration -= _pendingStep) : null),
                       Expanded(child: Text('$_pendingDuration ${_pendingMode.unit}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
-                      IconButton.filledTonal(icon: const Icon(Icons.add), onPressed: () => setState(() => _pendingDuration++)),
+                      IconButton.filledTonal(icon: const Icon(Icons.add), onPressed: () => setState(() => _pendingDuration += _pendingStep)),
                     ]),
                     const SizedBox(height: 8),
                     SizedBox(
@@ -198,7 +205,7 @@ class _HotelProformaScreenState extends ConsumerState<HotelProformaScreen> {
                         icon: const Icon(Icons.add),
                         label: Text(_pendingRoom == null
                             ? 'Ajoute chanm'
-                            : 'Ajoute chanm (${MoneyFormatter.format(_pendingRate(_pendingRoom!) * _pendingDuration)})'),
+                            : 'Ajoute chanm (${MoneyFormatter.format(_pendingRate(_pendingRoom!) * hotelBillableUnits(_pendingMode, _pendingDuration))})'),
                         onPressed: _pendingRoom == null ? null : _addRoom,
                       ),
                     ),

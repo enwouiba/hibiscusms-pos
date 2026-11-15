@@ -75,7 +75,7 @@ class HotelStayDetailScreen extends ConsumerWidget {
           final dur = int.tryParse(durCtrl.text.trim()) ?? s.duration;
           final extra = double.tryParse(extraCtrl.text.trim()) ?? 0;
           final disc = double.tryParse(discCtrl.text.trim()) ?? 0;
-          final total = (s.rate * dur + extra - disc).clamp(0, double.infinity).toDouble();
+          final total = (s.rate * hotelBillableUnits(s.mode, dur) + extra - disc).clamp(0, double.infinity).toDouble();
           final due = (total - s.amountPaid).clamp(0, double.infinity).toDouble();
           return AlertDialog(
             title: const Text('Check-out'),
@@ -253,8 +253,11 @@ class HotelStayDetailScreen extends ConsumerWidget {
       createdAt: s.createdAt,
       items: [
         ReceiptItem(
-          name: '${s.roomNameSnapshot} · ${s.mode.unit}',
-          quantity: s.duration.toDouble(),
+          // Moman: montre an « moman » (blòk 2h) pou qty × pri rete kòrèk.
+          name: s.mode == HotelRentalMode.hourly
+              ? '${s.roomNameSnapshot} · moman ${s.duration}h'
+              : '${s.roomNameSnapshot} · ${s.mode.unit}',
+          quantity: hotelBillableUnits(s.mode, s.duration),
           subtotal: s.roomCharge,
         ),
         if (s.extra > 0) ReceiptItem(name: 'Chaj anplis', quantity: 1, subtotal: s.extra),

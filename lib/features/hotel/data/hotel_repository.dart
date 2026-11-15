@@ -174,7 +174,9 @@ class HotelRepository {
     final stayId = Ulid().toCanonical();
     final stayNumber = await _nextStayNumber(storeId);
     final rate = mode == HotelRentalMode.hourly ? room.pricePerHour : room.pricePerNight;
-    final total = (rate * duration + extra - discount).clamp(0, double.infinity).toDouble();
+    final total = (rate * hotelBillableUnits(mode, duration) + extra - discount)
+        .clamp(0, double.infinity)
+        .toDouble();
     final version = _hlc.next();
 
     final map = <String, dynamic>{
@@ -245,10 +247,13 @@ class HotelRepository {
       if (rows.isEmpty) return;
       final map = Map<String, dynamic>.from(rows.first);
       final rate = (map['rate'] as num?)?.toDouble() ?? 0;
+      final mode = HotelRentalMode.fromCode(map['mode'] as String?);
       final dur = finalDuration ?? (map['duration'] as num?)?.toInt() ?? 1;
       final extra = finalExtra ?? (map['extra'] as num?)?.toDouble() ?? 0;
       final disc = finalDiscount ?? (map['discount'] as num?)?.toDouble() ?? 0;
-      final total = (rate * dur + extra - disc).clamp(0, double.infinity).toDouble();
+      final total = (rate * hotelBillableUnits(mode, dur) + extra - disc)
+          .clamp(0, double.infinity)
+          .toDouble();
 
       map['duration'] = dur;
       map['extra'] = extra;

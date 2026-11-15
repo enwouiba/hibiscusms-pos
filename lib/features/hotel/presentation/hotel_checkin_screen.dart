@@ -18,7 +18,7 @@ class _RoomBooking {
   int duration;
 
   double get rate => mode == HotelRentalMode.hourly ? room.pricePerHour : room.pricePerNight;
-  double get charge => rate * duration;
+  double get charge => rate * hotelBillableUnits(mode, duration);
 }
 
 /// Check-in: bay yon KLIYAN youn OSWA PLIZYÈ chanm an menm tan — chak chanm ak
@@ -276,6 +276,8 @@ class _HotelCheckinScreenState extends ConsumerState<HotelCheckinScreen> {
 
   Widget _roomCard(int i) {
     final b = _bookings[i];
+    // Moman (èdtan): minimòm 2h, sèlman chif pè (2,4,6…). Nwit: 1 pa 1.
+    final step = b.mode == HotelRentalMode.hourly ? 2 : 1;
     return Card(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
@@ -299,7 +301,10 @@ class _HotelCheckinScreenState extends ConsumerState<HotelCheckinScreen> {
               ButtonSegment(value: HotelRentalMode.hourly, label: Text('⏱️ Èdtan')),
             ],
             selected: {b.mode},
-            onSelectionChanged: (s) => setState(() { b.mode = s.first; b.duration = 1; }),
+            onSelectionChanged: (s) => setState(() {
+              b.mode = s.first;
+              b.duration = s.first == HotelRentalMode.hourly ? 2 : 1;
+            }),
             style: const ButtonStyle(visualDensity: VisualDensity.compact),
           ),
           const SizedBox(height: 8),
@@ -308,19 +313,19 @@ class _HotelCheckinScreenState extends ConsumerState<HotelCheckinScreen> {
             IconButton.filledTonal(
               icon: const Icon(Icons.remove),
               visualDensity: VisualDensity.compact,
-              onPressed: b.duration > 1 ? () => setState(() => b.duration--) : null,
+              onPressed: b.duration > step ? () => setState(() => b.duration -= step) : null,
             ),
             Expanded(child: Text('${b.duration} ${b.mode.unit}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
             IconButton.filledTonal(
               icon: const Icon(Icons.add),
               visualDensity: VisualDensity.compact,
-              onPressed: () => setState(() => b.duration++),
+              onPressed: () => setState(() => b.duration += step),
             ),
           ]),
           Wrap(
             spacing: 6,
             children: [
-              for (final n in (b.mode == HotelRentalMode.hourly ? const [1, 2, 3, 4, 6, 12] : const [1, 2, 3, 7]))
+              for (final n in (b.mode == HotelRentalMode.hourly ? const [2, 4, 6, 8, 10, 12] : const [1, 2, 3, 7]))
                 ChoiceChip(
                   label: Text('$n'),
                   selected: b.duration == n,

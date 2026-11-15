@@ -58,9 +58,11 @@ class _State extends ConsumerState<HotelProformaDetailScreen> {
         lines: [
           for (final it in p.items)
             InvoiceLine(
-              description: 'Chanm ${it.roomName} (${it.mode.label})',
-              qty: it.duration,
-              unitLabel: it.mode.unit,
+              description: it.mode == HotelRentalMode.hourly
+                  ? 'Chanm ${it.roomName} (Moman ${it.duration}h)'
+                  : 'Chanm ${it.roomName} (${it.mode.label})',
+              qty: (hotelBillableUnits(it.mode, it.duration)).round(),
+              unitLabel: it.mode == HotelRentalMode.hourly ? 'moman' : it.mode.unit,
               rate: it.rate,
               total: it.lineTotal,
             ),
@@ -182,7 +184,7 @@ class _State extends ConsumerState<HotelProformaDetailScreen> {
                   contentPadding: EdgeInsets.zero,
                   leading: Text(it.mode.emoji, style: const TextStyle(fontSize: 18)),
                   title: Text('Chanm ${it.roomName}'),
-                  subtitle: Text('${it.duration} ${it.mode.unit} × ${MoneyFormatter.format(it.rate)}'),
+                  subtitle: Text('${hotelQtyLabel(it.mode, it.duration)} × ${MoneyFormatter.format(it.rate)}'),
                   trailing: Text(MoneyFormatter.format(it.lineTotal), style: const TextStyle(fontWeight: FontWeight.bold)),
                 ),
               const Divider(height: 24),

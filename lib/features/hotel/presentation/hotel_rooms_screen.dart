@@ -238,7 +238,7 @@ class _HotelRoomsScreenState extends ConsumerState<HotelRoomsScreen> {
 
   Widget _roomCard(HotelRoom r) {
     final c = _statusColor(r.status);
-    final price = r.isMoman ? '${MoneyFormatter.format(r.pricePerHour)}/h' : '${MoneyFormatter.format(r.pricePerNight)}/nwit';
+    final price = r.isMoman ? '${MoneyFormatter.format(r.pricePerHour)}/moman (2h)' : '${MoneyFormatter.format(r.pricePerNight)}/nwit';
     return Card(
       color: c.withValues(alpha: 0.12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: c, width: 1.5)),

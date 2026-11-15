@@ -37,6 +37,20 @@ enum HotelRentalMode {
       .firstWhere((m) => m.code == code, orElse: () => HotelRentalMode.nightly);
 }
 
+/// Kantite inite faktirab pou yon sejou:
+///  • Nwit  → kantite nwit (pri a se PA NWIT).
+///  • Moman → kantite blòk 2è (yon « moman » = 2h). Pri a se PA MOMAN (2h),
+///    donk 2h = 1 moman = pri a, 4h = 2 moman, 6h = 3 moman...
+double hotelBillableUnits(HotelRentalMode mode, int duration) =>
+    mode == HotelRentalMode.hourly ? duration / 2.0 : duration.toDouble();
+
+/// Etikèt lizib kantite+inite (konsa « × tarif » rete kòrèk nan afichaj):
+///  • Moman → « 1 moman (2h) », « 2 moman (4h) »…
+///  • Nwit  → « 3 nwit »
+String hotelQtyLabel(HotelRentalMode mode, int duration) => mode == HotelRentalMode.hourly
+    ? '${duration ~/ 2} moman (${duration}h)'
+    : '$duration ${mode.unit}';
+
 /// Estati yon sejou.
 enum HotelStayStatus {
   active('active', 'Anndan', '🟢'),
@@ -145,7 +159,7 @@ class HotelStay {
     required this.createdAt,
   });
 
-  double get roomCharge => rate * duration;
+  double get roomCharge => rate * hotelBillableUnits(mode, duration);
   double get amountDue => (total - amountPaid).clamp(0, double.infinity).toDouble();
 
   /// Lè sejou a dwe fini selon dire ki chwazi a (check-in + dire).
@@ -199,7 +213,7 @@ class HotelProformaItem {
     required this.rate,
   });
 
-  double get lineTotal => rate * duration;
+  double get lineTotal => rate * hotelBillableUnits(mode, duration);
 
   Map<String, dynamic> toJson() => {
         'room_id': roomId,

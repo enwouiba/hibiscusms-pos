@@ -164,7 +164,7 @@ class _HotelRoomFormScreenState extends ConsumerState<HotelRoomFormScreen> {
                       child: TextFormField(
                         controller: _hourCtrl,
                         decoration: const InputDecoration(
-                          labelText: 'Pri pa èdtan *', border: OutlineInputBorder(),
+                          labelText: 'Pri pa moman (2h) *', border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.schedule),
                         ),
                         keyboardType: money, inputFormatters: moneyFmt,
