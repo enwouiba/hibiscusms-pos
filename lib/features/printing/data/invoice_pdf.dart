@@ -37,6 +37,7 @@ class InvoiceData {
   final String? guestName;
   final String? guestPhone;
   final String? guestIdDoc;
+  final String? guestEmail;
 
   final String? roomName;
   final String modeLabel; // "Pa nwit"
@@ -67,6 +68,7 @@ class InvoiceData {
     this.guestName,
     this.guestPhone,
     this.guestIdDoc,
+    this.guestEmail,
     this.roomName,
     this.modeLabel = '',
     this.unitLabel = '',
@@ -163,6 +165,7 @@ class InvoicePdf {
           if (d.guestName != null && d.guestName!.isNotEmpty) pw.Text('Non: ${d.guestName}'),
           if (d.guestPhone != null && d.guestPhone!.isNotEmpty) pw.Text('Telefòn: ${d.guestPhone}'),
           if (d.guestIdDoc != null && d.guestIdDoc!.isNotEmpty) pw.Text('NIF/CIN: ${d.guestIdDoc}'),
+          if (d.guestEmail != null && d.guestEmail!.isNotEmpty) pw.Text('Imel: ${d.guestEmail}'),
           pw.SizedBox(height: 16),
           // Tablo detay
           pw.Table(

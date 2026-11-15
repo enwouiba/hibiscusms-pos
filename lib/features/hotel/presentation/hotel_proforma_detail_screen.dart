@@ -56,6 +56,7 @@ class _State extends ConsumerState<HotelProformaDetailScreen> {
         guestName: p.guestName,
         guestPhone: p.guestPhone,
         guestIdDoc: p.guestIdDoc,
+        guestEmail: p.guestEmail,
         lines: [
           for (final it in p.items)
             InvoiceLine(
@@ -179,6 +180,7 @@ class _State extends ConsumerState<HotelProformaDetailScreen> {
               if ((p.guestName ?? '').isNotEmpty) Text('Non: ${p.guestName}'),
               if ((p.guestPhone ?? '').isNotEmpty) Text('Telefòn: ${p.guestPhone}'),
               if ((p.guestIdDoc ?? '').isNotEmpty) Text('NIF/CIN: ${p.guestIdDoc}'),
+              if ((p.guestEmail ?? '').isNotEmpty) Text('Imel: ${p.guestEmail}'),
               const Divider(height: 24),
               Text('Chanm (${p.roomCount})', style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
@@ -207,7 +209,7 @@ class _State extends ConsumerState<HotelProformaDetailScreen> {
                 ),
               ),
               const SizedBox(height: 10),
-              if (!p.validated && canManage)
+              if (!p.validated)
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(

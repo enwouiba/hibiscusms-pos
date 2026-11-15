@@ -244,6 +244,7 @@ class HotelProforma {
   final String? guestName;
   final String? guestPhone;
   final String? guestIdDoc;
+  final String? guestEmail;
   final List<HotelProformaItem> items;
   final double extra;
   final double discount;
@@ -262,6 +263,7 @@ class HotelProforma {
     this.guestName,
     this.guestPhone,
     this.guestIdDoc,
+    this.guestEmail,
     required this.items,
     this.extra = 0,
     this.discount = 0,
@@ -298,6 +300,7 @@ class HotelProforma {
         guestName: m['guest_name'] as String?,
         guestPhone: m['guest_phone'] as String?,
         guestIdDoc: m['guest_id_doc'] as String?,
+        guestEmail: m['guest_email'] as String?,
         items: _parseItems(m['items']),
         extra: (m['extra'] as num?)?.toDouble() ?? 0,
         discount: (m['discount'] as num?)?.toDouble() ?? 0,

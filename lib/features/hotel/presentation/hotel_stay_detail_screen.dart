@@ -377,8 +377,8 @@ class HotelStayDetailScreen extends ConsumerWidget {
                   width: double.infinity,
                   child: OutlinedButton.icon(icon: const Icon(Icons.print), label: Text(_printLabel(s)), onPressed: () => _printReceipt(context, ref, s)),
                 ),
-              // Pofoma → Fakti (sejou nwit sèlman) — jesyonè sèlman
-              if (s.mode == HotelRentalMode.nightly && !s.proformaValidated && canManage) ...[
+              // Pofoma → Fakti (sejou nwit sèlman) — kesye ka valide tou
+              if (s.mode == HotelRentalMode.nightly && !s.proformaValidated) ...[
                 const SizedBox(height: 10),
                 SizedBox(
                   width: double.infinity,

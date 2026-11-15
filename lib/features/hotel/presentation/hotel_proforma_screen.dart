@@ -29,6 +29,7 @@ class _HotelProformaScreenState extends ConsumerState<HotelProformaScreen> {
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _idCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
   final _extraCtrl = TextEditingController();
   final _discountCtrl = TextEditingController();
 
@@ -44,7 +45,7 @@ class _HotelProformaScreenState extends ConsumerState<HotelProformaScreen> {
 
   @override
   void dispose() {
-    for (final c in [_nameCtrl, _phoneCtrl, _idCtrl, _extraCtrl, _discountCtrl]) {
+    for (final c in [_nameCtrl, _phoneCtrl, _idCtrl, _emailCtrl, _extraCtrl, _discountCtrl]) {
       c.dispose();
     }
     super.dispose();
@@ -87,6 +88,12 @@ class _HotelProformaScreenState extends ConsumerState<HotelProformaScreen> {
           const SnackBar(content: Text('Non kliyan obligatwa')));
       return;
     }
+    final email = _emailCtrl.text.trim();
+    if (email.isEmpty || !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Imel kliyan obligatwa epi li dwe valab')));
+      return;
+    }
     setState(() => _saving = true);
     try {
       final storeId = await ref.read(tokenStoreProvider).activeStoreId();
@@ -99,6 +106,7 @@ class _HotelProformaScreenState extends ConsumerState<HotelProformaScreen> {
             guestName: _nameCtrl.text.trim(),
             guestPhone: _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
             guestIdDoc: _idCtrl.text.trim().isEmpty ? null : _idCtrl.text.trim(),
+            guestEmail: email,
             items: _items,
             extra: _extra,
             discount: _discount,
@@ -139,6 +147,13 @@ class _HotelProformaScreenState extends ConsumerState<HotelProformaScreen> {
               TextField(controller: _phoneCtrl, decoration: const InputDecoration(labelText: 'Telefòn', border: OutlineInputBorder(), prefixIcon: Icon(Icons.phone)), keyboardType: TextInputType.phone),
               const SizedBox(height: 10),
               TextField(controller: _idCtrl, decoration: const InputDecoration(labelText: 'NIF / CIN', border: OutlineInputBorder(), prefixIcon: Icon(Icons.badge))),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _emailCtrl,
+                decoration: const InputDecoration(labelText: 'Imel *', border: OutlineInputBorder(), prefixIcon: Icon(Icons.email)),
+                keyboardType: TextInputType.emailAddress,
+                autocorrect: false,
+              ),
 
               const SizedBox(height: 18),
               const Text('CHANM YO', style: TextStyle(fontWeight: FontWeight.bold)),

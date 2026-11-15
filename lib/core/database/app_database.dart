@@ -605,6 +605,7 @@ class AppDatabase {
         guest_name TEXT,
         guest_phone TEXT,
         guest_id_doc TEXT,
+        guest_email TEXT,
         items TEXT NOT NULL DEFAULT '[]',
         extra REAL NOT NULL DEFAULT 0,
         discount REAL NOT NULL DEFAULT 0,
@@ -757,6 +758,13 @@ class AppDatabase {
       try {
         await db.execute(_sqlHotelProformas.replaceFirst('CREATE TABLE', 'CREATE TABLE IF NOT EXISTS'));
         await db.execute('CREATE INDEX IF NOT EXISTS idx_hp_store ON hotel_proformas(store_id)');
+      } catch (_) {}
+    }
+
+    if (oldVersion < 14) {
+      // v14: imel kliyan obligatwa sou pofoma
+      try {
+        await db.execute('ALTER TABLE hotel_proformas ADD COLUMN guest_email TEXT');
       } catch (_) {}
     }
   }
