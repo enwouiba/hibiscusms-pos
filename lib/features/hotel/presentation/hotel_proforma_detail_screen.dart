@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/auth/auth_state.dart';
 import '../../../core/auth/token_store.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/money_formatter.dart';
@@ -137,14 +138,17 @@ class _State extends ConsumerState<HotelProformaDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(_proformaProvider(widget.proformaId));
+    // Sekretè a (kesye) pa ka efase ni valide — sèlman enprime. Jesyonè >= 2.
+    final canManage = (ref.watch(authControllerProvider).valueOrNull?.highestLevel(null) ?? 0) >= 2;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Detay Pofoma'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            onPressed: _busy ? null : () => async.whenData((p) { if (p != null) _delete(p); }),
-          ),
+          if (canManage)
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              onPressed: _busy ? null : () => async.whenData((p) { if (p != null) _delete(p); }),
+            ),
         ],
       ),
       body: async.when(
@@ -203,7 +207,7 @@ class _State extends ConsumerState<HotelProformaDetailScreen> {
                 ),
               ),
               const SizedBox(height: 10),
-              if (!p.validated)
+              if (!p.validated && canManage)
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(

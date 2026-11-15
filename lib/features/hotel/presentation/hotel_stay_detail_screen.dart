@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/auth/auth_state.dart';
 import '../../../core/auth/token_store.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/money_formatter.dart';
@@ -293,6 +294,9 @@ class HotelStayDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(_stayProvider(stayId));
+    // Sèlman jesyonè (admin/manadjè, nivo >= 2) ka efase/modifye. Sekretè a
+    // (kesye) ka SÈLMAN enprime + bay sèvis (check-in).
+    final canManage = (ref.watch(authControllerProvider).valueOrNull?.highestLevel(null) ?? 0) >= 2;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Detay Sejou'),
@@ -302,7 +306,8 @@ class HotelStayDetailScreen extends ConsumerWidget {
                 ? const SizedBox.shrink()
                 : Row(mainAxisSize: MainAxisSize.min, children: [
                     IconButton(icon: const Icon(Icons.print), tooltip: 'Enprime resi', onPressed: () => _printReceipt(context, ref, s)),
-                    IconButton(icon: const Icon(Icons.delete_outline), tooltip: 'Efase sejou', onPressed: () => _deleteStay(context, ref, s)),
+                    if (canManage)
+                      IconButton(icon: const Icon(Icons.delete_outline), tooltip: 'Efase sejou', onPressed: () => _deleteStay(context, ref, s)),
                   ]),
             orElse: () => const SizedBox.shrink(),
           ),
@@ -352,7 +357,7 @@ class HotelStayDetailScreen extends ConsumerWidget {
               _row('Peye', MoneyFormatter.format(s.amountPaid)),
               if (s.amountDue > 0) _row('Dèt pou peye', MoneyFormatter.format(s.amountDue), bold: true, color: Colors.red),
               const SizedBox(height: 20),
-              if (active) ...[
+              if (active && canManage) ...[
                 SizedBox(
                   height: 52,
                   child: FilledButton.icon(
@@ -372,8 +377,8 @@ class HotelStayDetailScreen extends ConsumerWidget {
                   width: double.infinity,
                   child: OutlinedButton.icon(icon: const Icon(Icons.print), label: Text(_printLabel(s)), onPressed: () => _printReceipt(context, ref, s)),
                 ),
-              // Pofoma → Fakti (sejou nwit sèlman)
-              if (s.mode == HotelRentalMode.nightly && !s.proformaValidated) ...[
+              // Pofoma → Fakti (sejou nwit sèlman) — jesyonè sèlman
+              if (s.mode == HotelRentalMode.nightly && !s.proformaValidated && canManage) ...[
                 const SizedBox(height: 10),
                 SizedBox(
                   width: double.infinity,

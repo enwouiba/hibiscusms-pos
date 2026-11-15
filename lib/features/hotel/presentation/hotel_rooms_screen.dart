@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/auth/auth_state.dart';
 import '../../../core/auth/token_store.dart';
 import '../../../core/utils/money_formatter.dart';
 import '../../../shared/models/hotel.dart';
@@ -101,6 +102,10 @@ class _HotelRoomsScreenState extends ConsumerState<HotelRoomsScreen> {
         }
     }
   }
+
+  // Sèlman jesyonè (nivo >= 2) ka jere chanm. Sekretè a ka sèlman klike yon
+  // chanm pou bay sèvis (check-in).
+  bool get _canManage => (ref.read(authControllerProvider).valueOrNull?.highestLevel(null) ?? 0) >= 2;
 
   @override
   Widget build(BuildContext context) {
@@ -202,11 +207,13 @@ class _HotelRoomsScreenState extends ConsumerState<HotelRoomsScreen> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        icon: const Icon(Icons.add),
-        label: const Text('Ajoute Chanm'),
-        onPressed: () => context.push('/hotel/room/new'),
-      ),
+      floatingActionButton: _canManage
+          ? FloatingActionButton.extended(
+              icon: const Icon(Icons.add),
+              label: const Text('Ajoute Chanm'),
+              onPressed: () => context.push('/hotel/room/new'),
+            )
+          : null,
     );
   }
 
@@ -245,7 +252,7 @@ class _HotelRoomsScreenState extends ConsumerState<HotelRoomsScreen> {
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () => _tapRoom(r),
-        onLongPress: () => context.push('/hotel/room/${r.id}'),
+        onLongPress: _canManage ? () => context.push('/hotel/room/${r.id}') : null,
         child: Padding(
           padding: const EdgeInsets.all(8),
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
